@@ -46,7 +46,8 @@ Use models supporting JSON transcription and WAV speech. Formats were checked ag
 [OpenAI's published OpenAPI schema](https://github.com/openai/openai-openapi/blob/master/openapi.yaml)
 on 2026-11-15. STT uses multipart model/language/response_format=json/file(speech.wav).
 TTS uses JSON model/input/voice/response_format=wav/speed. TTS has no documented language
-field: language follows the input text and selected voice. Model/voice/language/speed support
+field: language follows the input text and selected voice. Known German commands receive
+German spoken confirmations; system/application status may include technical OS/executor strings. Model/voice/language/speed support
 varies by provider; live endpoint compatibility is not claimed by mocked contract tests.
 
 ```sh

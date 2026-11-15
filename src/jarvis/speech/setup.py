@@ -68,4 +68,5 @@ def make_voice(
         assistant.conversation,
         float(os.getenv("JARVIS_RECORD_SECONDS", "20")),
         os.getenv("JARVIS_SHARE_TRANSCRIPT", "0") == "1",
+        language=language,
     )

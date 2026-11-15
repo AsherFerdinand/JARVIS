@@ -16,7 +16,7 @@ Windows audio-extra packaging with backend-load/mock-voice/DLL/manifest checks.
 
 ## Validation — 2026-11-15 Linux cloud
 
-- 120 tests passed, 2 Windows-only checks skipped; no failed/disabled/expected-failure tests.
+- 121 tests passed, 2 Windows-only checks skipped; no failed/disabled/expected-failure tests.
   Existing v0.1 tests remain passing. New tests exercise synthetic prerecorded WAV, actual capture/
   output adapter code with fake streams, STT multipart/TTS JSON wire formats, provider failures,
   missing configuration, ambiguity/shell denial, history bounds, state transitions, simultaneous

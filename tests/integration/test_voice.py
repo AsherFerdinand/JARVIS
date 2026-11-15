@@ -351,3 +351,17 @@ def test_disabled_speech_does_not_import_or_open_devices():
         timeout=10,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_german_action_confirmation_is_spoken_in_german():
+    spoken = []
+
+    class RecordingTTS(MockTTS):
+        def synthesize(self, text, cancel):
+            spoken.append(text)
+            return super().synthesize(text, cancel)
+
+    controller = make_controller("Öffne YouTube.", language="de", tts=RecordingTTS())
+    controller.start()
+    assert controller.wait(3).state.current == State.COMPLETED
+    assert spoken == ["Webseite geöffnet."]

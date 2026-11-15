@@ -36,12 +36,18 @@ class VoiceController:
         conversation: Conversation | None = None,
         max_seconds: float = 20,
         share_transcript: bool = False,
+        language: str = "en",
     ) -> None:
-        if not 0 < max_seconds <= 60 or (tts is None) != (playback is None):
+        if (
+            not 0 < max_seconds <= 60
+            or (tts is None) != (playback is None)
+            or language not in {"en", "de"}
+        ):
             raise ValueError("Invalid voice configuration")
         self.assistant, self.capture, self.stt = assistant, capture, stt
         self.tts, self.playback, self.conversation = tts, playback, conversation
         self.max_seconds, self.share_transcript = max_seconds, share_transcript
+        self.language = language
         self._lock = Lock()
         self._thread: Thread | None = None
         self._cancel = Cancellation()
@@ -166,7 +172,18 @@ class VoiceController:
             if self.tts is not None and self.playback is not None:
                 move(State.SPEAKING)
                 phase = time.perf_counter()
-                spoken = self.tts.synthesize(result.response, cancel)
+                speech_text = result.response
+                if self.language == "de" and intent is not None:
+                    confirmations = {
+                        "open_website": "Webseite geöffnet.",
+                        "open_application": "Anwendung ist bereit.",
+                        "assistant_status": "JARVIS ist bereit.",
+                        "exit": "JARVIS wurde beendet.",
+                        "system_info": f"Systeminformationen: {result.response}",
+                        "application_status": f"Anwendungsstatus: {result.response}",
+                    }
+                    speech_text = confirmations[intent.action]
+                spoken = self.tts.synthesize(speech_text, cancel)
                 cancel.check()
                 playback_started = True
                 self.playback.play(spoken, cancel)
