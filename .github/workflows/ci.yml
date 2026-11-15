@@ -21,7 +21,10 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy
-      - run: uv run pytest -v
+      - id: tests
+        run: uv run pytest -v --junitxml=.cache/test-results.xml
+      - if: ${{ always() && steps.tests.outcome != 'skipped' }}
+        run: uv run python scripts/report_tests.py .cache/test-results.xml
       - run: uv build
       - run: uv run python scripts/check_package.py
       - run: uv run --extra audio --group packaging pip-audit --progress-spinner off
