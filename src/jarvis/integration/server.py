@@ -6,6 +6,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 
 from jarvis.core.event_bus import EventBus
+from jarvis.integration.protocol import LEGACY_EVENT_TYPES
 
 
 class EventServer:
@@ -19,12 +20,21 @@ class EventServer:
                 if not hmac.compare_digest(supplied.encode(), f"Bearer {token}".encode()):
                     self.send_error(401)
                     return
-                if self.path != "/v1/events":
+                if self.path not in {"/v1/events", "/v1/voice-events"}:
                     self.send_error(404)
                     return
-                body = json.dumps(
-                    {"version": 1, "events": [e.to_dict() for e in bus.snapshot()]}
-                ).encode()
+                values = [e.to_dict() for e in bus.snapshot()]
+                if self.path == "/v1/events":
+                    values = [
+                        {
+                            k: v
+                            for k, v in e.items()
+                            if k not in {"session_id", "recognized_text", "error_info"}
+                        }
+                        for e in values
+                        if e["event"] in LEGACY_EVENT_TYPES
+                    ]
+                body = json.dumps({"version": 1, "events": values}).encode()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Cache-Control", "no-store")

@@ -3,12 +3,19 @@ import json
 import os
 from pathlib import Path
 
+from jarvis import __version__
 from jarvis.actions.windows import MockExecutor, WindowsExecutor
 from jarvis.config import Config
 from jarvis.core.lifecycle import Assistant
+from jarvis.core.voice_controller import PushToTalkAdapter, VoiceController
 from jarvis.diagnostics.logging import configure
 from jarvis.integration.server import EventServer
-from jarvis.intelligence.provider import OpenAIProvider, ProviderError
+from jarvis.intelligence.conversation import CloudConversation, Conversation
+from jarvis.intelligence.provider import ProviderError
+from jarvis.speech.audio import AudioError
+from jarvis.speech.audio_devices import list_devices
+from jarvis.speech.session import State
+from jarvis.speech.setup import endpoint_from_environment, make_voice
 
 
 def main() -> int:
@@ -16,36 +23,76 @@ def main() -> int:
     parser.add_argument("--mock", action="store_true", help="Use simulated OS actions")
     parser.add_argument("--command", help="Execute one command then exit")
     parser.add_argument("--events-port", type=int, help="Enable optional loopback event server")
-    parser.add_argument("--version", action="version", version="0.1.0")
+    parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument(
         "--diagnostics", action="store_true", help="Report token usage and event count"
     )
     parser.add_argument("--log-file", type=Path, help="Opt-in bounded diagnostic log")
+    voice_mode = parser.add_mutually_exclusive_group()
+    voice_mode.add_argument("--voice", action="store_true", help="Enable in-app push-to-talk")
+    voice_mode.add_argument("--voice-file", type=Path, help="Explicitly transcribe a PCM WAV file")
+    voice_mode.add_argument(
+        "--mock-voice", help="Run synthetic voice interaction without devices/API"
+    )
+    parser.add_argument("--voice-trigger", default="/voice", help="In-app activation command")
+    parser.add_argument("--no-speak", action="store_true", help="Disable speech output")
+    parser.add_argument("--list-audio-devices", action="store_true")
     args = parser.parse_args()
     server = None
     assistant = None
+    controller: VoiceController | None = None
     try:
         logger = configure(args.log_file)
         logger.info("Assistant starting")
-        url, model, key = (
+        if args.list_audio_devices:
+            print(list_devices())
+            return 0
+        if not args.voice_trigger.strip() or len(args.voice_trigger) > 32:
+            raise ValueError("Invalid activation command")
+        if args.command is not None and (
+            args.voice or args.voice_file or args.mock_voice is not None
+        ):
+            raise ValueError("Select text command or voice mode")
+        conversation = None
+        if args.mock_voice is None and any(
             os.getenv(name) for name in ("JARVIS_AI_URL", "JARVIS_AI_MODEL", "JARVIS_AI_KEY")
-        )
-        provider = None
-        if any((url, model, key)):
-            if not all((url, model, key)):
-                raise ValueError("Set all JARVIS_AI_URL, JARVIS_AI_MODEL and JARVIS_AI_KEY")
-            provider = OpenAIProvider(
-                url or "", model or "", key or "", float(os.getenv("JARVIS_AI_TIMEOUT", "15"))
+        ):
+            conversation = Conversation(
+                CloudConversation(endpoint_from_environment("JARVIS_AI")),
+                language=os.getenv("JARVIS_VOICE_LANGUAGE", "en"),
             )
-        assistant = Assistant(
-            Config(), MockExecutor() if args.mock else WindowsExecutor(), provider
-        )
+        executor = MockExecutor() if args.mock or args.mock_voice is not None else WindowsExecutor()
+        assistant = Assistant(Config(), executor, conversation=conversation)
+        if args.voice or args.voice_file or args.mock_voice is not None:
+            controller = make_voice(
+                assistant,
+                mock_text=args.mock_voice,
+                audio_file=args.voice_file,
+                speak=not args.no_speak,
+            )
         if args.events_port is not None:
             server = EventServer(
                 assistant.events, os.getenv("JARVIS_EVENT_TOKEN", ""), args.events_port
             )
             server.start()
             print(f"Event channel: 127.0.0.1:{server.port}")
+        if args.voice_file or args.mock_voice is not None:
+            if controller is None:
+                raise ValueError("Voice not configured")
+            controller.start()
+            result = controller.wait()
+            print(result.response or result.error_code or result.state.current)
+            if args.diagnostics:
+                print(
+                    json.dumps(
+                        {
+                            "state": result.state.current,
+                            "total_tokens": result.total_tokens,
+                            "timings_ms": result.timings_ms,
+                        }
+                    )
+                )
+            return 0 if result.state.current == State.COMPLETED else 1
         if args.command is not None:
             print(assistant.handle(args.command))
             if args.diagnostics:
@@ -64,6 +111,21 @@ def main() -> int:
                 except EOFError:
                     break
                 try:
+                    if controller is not None and text == args.voice_trigger:
+                        adapter = PushToTalkAdapter(controller)
+                        adapter.press()
+                        try:
+                            release = input("Listening; Enter releases, /cancel cancels: ")
+                        except EOFError:
+                            adapter.cancel()
+                        else:
+                            if release == "/cancel":
+                                adapter.cancel()
+                            else:
+                                adapter.release()
+                        result = controller.wait()
+                        print(result.response or result.error_code or result.state.current)
+                        continue
                     print(assistant.handle(text))
                     if args.diagnostics:
                         print(
@@ -74,16 +136,18 @@ def main() -> int:
                                 }
                             )
                         )
-                except (ValueError, RuntimeError, OSError, ProviderError):
+                except (ValueError, RuntimeError, OSError, ProviderError, AudioError):
                     logger.warning("Command failed")
                     print("Command failed; check command or provider configuration")
         return 0
-    except (ValueError, RuntimeError, OSError, ProviderError):
+    except (ValueError, RuntimeError, OSError, ProviderError, AudioError):
         print("JARVIS failed; check platform, command, or provider configuration")
         return 1
     except KeyboardInterrupt:
         return 0
     finally:
+        if controller is not None:
+            controller.close()
         if server is not None:
             server.close()
         if assistant is not None:

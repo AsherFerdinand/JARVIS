@@ -4,11 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jarvis-assistant"
-version = "0.1.0"
+version = "0.2.0"
 description = "Lightweight Windows assistant with explicit action boundaries"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
+
+[project.optional-dependencies]
+audio = ["sounddevice==0.5.3"]
 
 [project.scripts]
 jarvis = "jarvis.main:main"

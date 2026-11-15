@@ -7,11 +7,19 @@ class Router:
         self.config = config
 
     def route(self, text: str) -> Intent | None:
-        command = " ".join(text.casefold().split())
+        command = " ".join(text.casefold().strip().rstrip(".!").split())
+        aliases = {
+            "öffne youtube": "open youtube",
+            "öffne notepad": "open notepad",
+            "systeminformationen": "system info",
+            "zeige systeminformationen": "system info",
+        }
+        command = aliases.get(command, command)
         simple = {
             "status": "assistant_status",
             "assistant status": "assistant_status",
             "system info": "system_info",
+            "show system information": "system_info",
             "exit": "exit",
         }
         if command in simple:

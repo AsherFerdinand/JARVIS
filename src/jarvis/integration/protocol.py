@@ -2,7 +2,7 @@ import time
 import uuid
 from dataclasses import asdict, dataclass
 
-EVENT_TYPES = frozenset(
+LEGACY_EVENT_TYPES = frozenset(
     {
         "assistant.idle",
         "assistant.listening",
@@ -11,6 +11,18 @@ EVENT_TYPES = frozenset(
         "command.executing",
         "command.completed",
         "command.failed",
+    }
+)
+
+EVENT_TYPES = LEGACY_EVENT_TYPES | frozenset(
+    {
+        "assistant.transcribing",
+        "voice.transcription.completed",
+        "voice.session.completed",
+        "voice.session.failed",
+        "voice.session.cancelled",
+        "voice.playback.completed",
+        "voice.playback.cancelled",
     }
 )
 
@@ -27,6 +39,10 @@ class Event:
     icon: str | None = None
     progress: float | None = None
 
+    session_id: str | None = None
+    recognized_text: str | None = None
+    error_info: str | None = None
+
     def __post_init__(self) -> None:
         if self.version != 1 or self.event not in EVENT_TYPES:
             raise ValueError("Unsupported event protocol")
@@ -36,8 +52,30 @@ class Event:
             raise ValueError("Invalid progress")
 
     def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+        result = asdict(self)
+        for key in ("session_id", "recognized_text", "error_info"):
+            if result[key] is None:
+                del result[key]
+        return result
 
 
-def event(kind: str, correlation_id: str, application: str | None = None) -> Event:
-    return Event(1, str(uuid.uuid4()), time.time(), correlation_id, kind, application)
+def event(
+    kind: str,
+    correlation_id: str,
+    application: str | None = None,
+    *,
+    session_id: str | None = None,
+    recognized_text: str | None = None,
+    error_info: str | None = None,
+) -> Event:
+    return Event(
+        1,
+        str(uuid.uuid4()),
+        time.time(),
+        correlation_id,
+        kind,
+        application,
+        session_id=session_id,
+        recognized_text=recognized_text,
+        error_info=error_info,
+    )
