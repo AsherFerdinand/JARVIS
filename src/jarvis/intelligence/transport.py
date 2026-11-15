@@ -55,6 +55,7 @@ class Outcome:
     status: int | None = None
     transient: bool = False
     retry_after: float | None = None
+    resources: dict[str, int | float | None] | None = None
 
 
 def _opener(
@@ -167,7 +168,16 @@ def exchange(call: Call, opener: OpenerDirector | None = None) -> Outcome:
 
 def _worker(sender: Connection, call: Call | None) -> None:
     try:
-        sender.send(Outcome(body=b"ready") if call is None else exchange(call))
+        if call is None:
+            from jarvis.diagnostics.resources import process_resources
+
+            try:
+                resources = process_resources()
+            except OSError:
+                resources = None
+            sender.send(Outcome(body=b"ready", resources=resources))
+        else:
+            sender.send(exchange(call))
     except Exception:
         # Do not send exception strings, request headers or provider payloads.
         try:
@@ -263,7 +273,7 @@ class ProcessTransport:
             retry_after=result.retry_after,
         )
 
-    def probe(self) -> None:
+    def probe(self) -> dict[str, int | float | None] | None:
         deadline = time.monotonic() + 10
         if not self._slots.acquire(timeout=10):
             raise ProviderError("Provider runtime busy", code="transport_busy")
@@ -271,6 +281,7 @@ class ProcessTransport:
             result = self._attempt(None, Cancellation(), deadline)
             if result.code is not None or result.body != b"ready":
                 raise ProviderError("Provider worker unavailable", code="transport_failure")
+            return result.resources
         finally:
             self._slots.release()
 

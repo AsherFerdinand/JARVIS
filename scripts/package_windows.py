@@ -65,6 +65,8 @@ def main() -> None:
     if "Website opened (mock)" not in mock.stdout or '"state": "completed"' not in mock.stdout:
         raise RuntimeError("Packaged voice smoke failed")
     subprocess.run([str(bundle / "JARVIS.exe"), "--check-audio-backend"], check=True, timeout=30)
+    subprocess.run([str(bundle / "JARVIS.exe"), "--check-provider-worker"], check=True, timeout=15)
+    subprocess.run([str(bundle / "JARVIS.exe"), "--health"], check=True, timeout=15)
     portaudio = list(bundle.rglob("libportaudio*.dll"))
     if not portaudio:
         raise RuntimeError("Required Windows PortAudio runtime missing")
@@ -106,6 +108,19 @@ def main() -> None:
         "delta_zip_bytes": archive.stat().st_size - previous if previous is not None else None,
     }
     (root / "dist/artifact-metrics.json").write_text(json.dumps(metrics, indent=2))
+    baseline_path = root / "dist/baseline-artifact-metrics.json"
+    if baseline_path.exists():
+        old = json.loads(baseline_path.read_text())
+        metrics["baseline_version"] = old["version"]
+        metrics["baseline_zip_bytes"] = old["zip_bytes"]
+        metrics["baseline_extracted_bytes"] = old["extracted_bytes"]
+        metrics["delta_zip_bytes"] = archive.stat().st_size - old["zip_bytes"]
+        metrics["delta_extracted_bytes"] = extracted_bytes - old["extracted_bytes"]
+        (root / "dist/artifact-metrics.json").write_text(json.dumps(metrics, indent=2))
+    if os.getenv("GITHUB_ACTIONS") == "true":
+        print(
+            "::notice title=Portable artifact metrics::" + json.dumps(metrics).replace("%", "%25")
+        )
     summary_path = os.getenv("GITHUB_STEP_SUMMARY")
     if summary_path:
         with Path(summary_path).open("a", encoding="utf-8") as summary:
