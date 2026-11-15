@@ -103,3 +103,32 @@ command events share session/correlation IDs. No raw audio or arbitrary exceptio
 Speech is shown as speaking during synthesis/playback; playback completion means the output
 stream finished, not proof that a physical speaker was audible. Existing snapshot retention and
 reconnection limitations still apply. Consumers of the extended channel must ignore unknown fields/types.
+
+## v0.3 recovery behavior (supersedes the v0.2 transport limitation above)
+
+Real requests now run in one deadline-supervised child at a time. Cancellation terminates that
+local child; it does not undo a provider request already received. A recovered session can activate
+after its worker finishes cleanup. Default connection timeout: min(10, response timeout); response
+inactivity: 15 seconds; total deadline: 30 seconds, including queue/startup, with <=0.5-second OS
+cleanup allowance. Configure JARVIS_AI/STT/TTS_CONNECT_TIMEOUT and _DEADLINE in addition to the
+existing _TIMEOUT (response inactivity); all values >0 and <=120. POSTs do not retry automatically.
+
+Normal device/network/auth/format failures end in failed + idle with a sanitized code; the next
+activation opens fresh resources. No automatic microphone restart or fallback recording occurs.
+Capture polls device activity every 50 ms only while explicitly listening and also observes stream
+completion callbacks. Cancel/close do not wait for a committed action to finish; an operation whose
+commit gate passed before cancellation cannot be reversed. close permanently prevents activation
+and waits <=2 seconds. Driver/custom adapter hangs are outside safe Python thread interruption;
+a hung native call can require restarting the process, with no replacement worker accumulation.
+
+Voice conversation turns commit only after successful session completion, not when their network
+reply first arrives. Cancelled synthesis/playback does not retain the prepared question/answer.
+Clear invalidates pending turns. Adapter callbacks carry the activated session ID; stale callbacks
+cannot release/cancel a newer session. Existing event names, ordering, authentication and legacy
+snapshot compatibility remain intact; granular error codes use existing error_info.
+
+Run `uv run jarvis --health` or type `/diagnostics` in text mode for sanitized status. To explicitly
+load the optional native audio backend without streams, use `--health --check-audio-backend`.
+`--check-provider-worker` verifies spawn/IPC without contacting any provider. Finite `--mock
+--idle-probe 8` is for automated resource sampling, not a background service. No user-side Windows
+installation/testing is requested for this milestone.

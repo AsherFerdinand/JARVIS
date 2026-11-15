@@ -45,3 +45,28 @@ The extended `/v1/voice-events` view exposes session IDs and additive voice type
 filters new types/fields for exact legacy compatibility. Both use the same loopback authentication.
 Recognized text sharing is off by default. See VOICE.md for configuration, bounds and transitions.
 The earlier interfaces-only statement describes v0.1; cloud/mock/device adapters now exist.
+
+## v0.3 hardening
+
+All provider paths, including legacy intent interpretation, share intelligence/transport.py and
+sanitized ProviderError metadata. No client/worker starts on import. A single global slot supervises
+short-lived standard-library spawn workers via a private local pipe; endpoint data/credentials are
+passed through IPC, never process command-line arguments or files. Parent deadlines include queue
+wait and worker startup; cancellation or deadline terminates the local child and closes its socket.
+No claim is made about undoing remote processing. Request/body size limits apply before IPC return.
+Safe GET/HEAD retries are bounded; actual STT/TTS/chat POSTs always get exactly one attempt.
+
+Conversation prepare/commit separates remote text generation from in-memory history retention.
+Voice commits a prepared turn with terminal completion, so cancellation during TTS/playback keeps
+no new history. A generation counter prevents clear/shutdown from being undone by an older turn.
+Controller start captures its own result/token/release objects; adapters retain session IDs, old
+release/cancel events are ignored, wait snapshots its result, and close prevents reactivation.
+
+Capture completion/inactivity and output errors have sanitized codes. Devices are context-managed
+per use, not cached. A failed normal session can activate again; a closed controller cannot. An
+uncooperative driver/custom adapter may require process restart after bounded shutdown; no attempt
+is made to kill a Python thread unsafely. Loopback server shutdown interrupts an active client.
+
+`--health` and `/diagnostics` expose inexpensive configuration/resource snapshots; explicit audio
+probe can be added to --health. The existing voice event error_info carries sanitized codes; no
+recovery-specific public event types or protocol meaning changes were necessary.

@@ -1,15 +1,17 @@
 # Roadmap
 
-- Phase 0 / v0.1: foundation merged into main; text routing, boundaries, protocol, CI and docs.
-- v0.2 (this branch): optional push-to-talk capture, cloud/mock STT/TTS, bounded conversations,
-  explicit cancellable sessions, legacy-compatible voice events, tests and portable packaging.
-- Validation: Windows CI/ZIP succeeded (see PROGRESS.md). Representative hardware evidence
-  for checkpoints A/B remains pending. v0.2 is cloud-only; no local installation/testing requested.
-- v0.3 recommendation: harden from Windows CI evidence; validate cancellation/device recovery,
-  provider compatibility and resource budgets before considering a consented global shortcut.
-  No wake word or ORBIT modification is implicitly authorized by this roadmap.
-- Later checkpoint C: optional wake word/background/startup only after model/resource evaluation.
-- Later checkpoint D: integrate actual ORBIT UI and end-to-end voice; no ORBIT changes here.
+- v0.1: foundation preserved; approved actions, typed boundaries, text lifecycle and protocol.
+- v0.2: voice/AI foundation preserved; 121 Linux checks were the starting baseline. The branch
+  was not merged into main when v0.3 began; v0.3 branches from exact v0.2 commit 595db1e.
+- v0.3 (active): bounded HTTP lifetime/cancellation/retries, staged history, device/session/shutdown
+  recovery, sanitized health, bounded mock-effect records, maintained CI actions, same-runner
+  Windows package comparison and finite executable resource measurements. See PROGRESS.md
+  for actual validation and exact CI SHAs; pipeline code alone is not proof of success.
+- Next: v0.4 should resolve any CI/package/resource findings and prepare a deliberately scoped
+  compatibility checkpoint. Live provider and physical device gaps remain explicitly unvalidated.
+- Deferred: wake word, continuous recording, global hooks, startup persistence, ORBIT UI work,
+  arbitrary shell/computer control and local model bundling require separately assigned scope.
 
-Each future hardware checkpoint needs automated checks, an available Windows ZIP/checksum,
-exact manual guide, and an explicit user request for hardware validation at the appropriate phase.
+No user-side Windows testing/installation is requested during v0.3. Shared runner CPU/RAM/startup
+numbers do not establish laptop acceptance targets. Future hardware checkpoints need automated
+checks, an available Windows artifact and a clear separately requested verification guide.

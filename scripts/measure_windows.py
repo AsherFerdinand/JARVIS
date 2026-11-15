@@ -50,7 +50,13 @@ def measure(executable: Path) -> dict[str, object]:
                 process.kill()
                 process.wait(timeout=3)
     audio_start = time.perf_counter()
-    subprocess.run([str(executable), "--check-audio-backend"], check=True, timeout=15)  # noqa: S603
+    backend = subprocess.run(  # noqa: S603 -- fixed executable from our build
+        [str(executable), "--check-audio-backend", "--diagnostics"],
+        check=True,
+        timeout=15,
+        capture_output=True,
+        text=True,
+    )  # noqa: S603
     backend_process = (time.perf_counter() - audio_start) * 1000
     return {
         "os": platform.platform(),
@@ -65,6 +71,9 @@ def measure(executable: Path) -> dict[str, object]:
         "natural_exit_wait_ms": exit_wait,
         "exit_code": code,
         "audio_backend_process_ms": backend_process,
+        "audio_backend_init_ms": json.loads(backend.stdout.splitlines()[-1])[
+            "audio_backend_init_ms"
+        ],
         "method": "50ms readiness; process CPU/memory APIs before/after 5s idle; "
         "8s finite idle probe, clean natural exit; audio import in separate process",
         "limitations": "shared hosted runner; single sample, core mock idle, no audio streams; "

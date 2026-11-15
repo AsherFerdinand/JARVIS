@@ -2,6 +2,7 @@ import argparse
 import json
 import multiprocessing
 import os
+import time
 from pathlib import Path
 from threading import Event
 
@@ -68,8 +69,12 @@ def main() -> int:
             print("Provider worker available")
             return 0
         if args.check_audio_backend:
+            started = time.perf_counter()
             audio_backend()
+            elapsed = (time.perf_counter() - started) * 1000
             print("Audio backend available; no stream opened")
+            if args.diagnostics:
+                print(json.dumps({"audio_backend_init_ms": elapsed}))
             return 0
         if args.list_audio_devices:
             print(list_devices())

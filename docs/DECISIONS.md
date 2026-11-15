@@ -35,3 +35,39 @@
 - Packaging includes the audio extra, a hidden-import for its lazy module, a PortAudio DLL check,
   backend-load and mock-voice executable smokes. Record size deltas only against a supplied
   measured Windows baseline; no baseline means null rather than a guessed size increase.
+
+## v0.3 reliability
+
+- Profiling began from v0.2: 121 tests passed; router median 0.003735 ms/p99 0.007471 ms;
+  synthetic voice allocation peak 3,891,929 bytes. No evidence justified a memory manager or
+  an HTTP SDK. Standard-library urllib remains the wire implementation.
+- Each real HTTP attempt runs in a spawn child with a parent monotonic deadline. This bounds
+  DNS, TLS, headers and slow-drip bodies even when urllib's socket timeout cannot. Cancellation
+  terminates/reaps that local process; it does not cancel/undo a remote charge or operation.
+  This trades temporary startup/RAM/IPC-copy cost for bounded request lifetime, without another
+  runtime dependency. One global request slot prevents concurrent worker accumulation. POSIX
+  CPython can retain its one resource-tracker helper; Windows uses native spawn handles.
+- Connection timeout defaults 10 seconds (capped by response timeout), response inactivity 15,
+  total deadline 30; all configurable, >0 and <=120. Queue wait/process startup count toward the
+  total; OS process cleanup allows up to 0.5 seconds beyond it. Response cap 64 KiB JSON / 4 MB
+  WAV; request cap 4,010,000 bytes. TLS and redirect restrictions remain enabled.
+- POST retries are forbidden because lost responses can still incur remote work/charges. Only
+  explicit GET/HEAD requests retry transient network/timeouts/429/5xx, at most 3 attempts under
+  one deadline, exponential 0.2-second base, <=2-second backoff and <=0.1-second positive jitter.
+  Numeric Retry-After is honored within the delay cap; larger values stop automatic retries.
+- A cancellation request no longer waits for the action lock. A successful check at the commit
+  gate is the irreversible-operation linearization point; previously committed actions may finish.
+  Voice history is staged and retained only at successful session completion. Clear invalidates
+  older prepared turns. Shutdown closes the controller permanently and joins for <=2 seconds;
+  a non-cooperative custom/native adapter cannot spawn replacement workers through it.
+- Capture uses finished callbacks plus 50-ms activity checks only while activated. Stream failure
+  releases context managers; the next session opens a fresh device/default selection. Input/output
+  chunks use memoryviews to avoid extra full-chunk copies. No silent continuous-recording fallback.
+- Event server closes an active client socket before shutdown so partial/slow headers cannot
+  hold shutdown open. Auth, paths, ordering and legacy field filtering remain unchanged.
+- Health output reports presence/status, not credentials, endpoint/model/device names or content.
+  Native backend probing is explicit; a package being installed is not proof it loads or has devices.
+- CI uses immutable Node.js 24 action releases (checkout 6/setup-python 6/upload-artifact 6),
+  branch/PR concurrency and tag-only reusable release packaging. A same-runner v0.2 source archive
+  build establishes actual package-size deltas without moving/resetting the development checkout.
+  Windows measurements are finite mock-idle probes, not representative laptop acceptance tests.

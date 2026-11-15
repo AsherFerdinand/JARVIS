@@ -1,85 +1,84 @@
 # Progress
 
-Current version: 0.2.0. Active branch: feat/jarvis-v0.2-voice-ai, based on origin/main fb0dd47
-(the merged v0.1 foundation). Core voice/conversation commit: 72143d9.
+Current version: 0.3.0. Branch: feat/jarvis-v0.3-reliability.
+Base: v0.2 commit 595db1e4ea60146e01e37797702c4bfbd432e4b7; v0.2 was not merged into main when
+this task started (main remained fb0dd47). Do not merge automatically. A stacked PR can target
+feat/jarvis-v0.2-voice-ai until it is merged; then retarget main as appropriate.
 
-## Completed milestones
+## Completed
 
-Phase 0/v0.1 foundation preserved: approved registry, isolated OS executor, deterministic routing,
-bounded event bus, optional authenticated loopback server, no mandatory third-party runtime.
+Preserved v0.1/v0.2 approved actions, English/German text/voice, optional audio/cloud providers,
+mock pipeline and authenticated versioned event views. Baseline: 121 Linux tests passed.
 
-v0.2 implementation: in-app configurable press/release/cancel activation; lazy optional raw PCM
-capture/playback; cloud and mock STT/TTS; English/German hints/aliases; text-only cloud conversation
-with bounded memory history; validated state transitions; no overlapping sessions; late-response
-cancellation gates; opt-in transcript events; exact legacy event view; diagnostics/benchmarks;
-Windows audio-extra packaging with backend-load/mock-voice/DLL/manifest checks.
+v0.3 adds deadline-supervised standard-library HTTP children, connection/response/total limits,
+bounded replies/IPC, cancellation/reaping, one request slot, sanitized HTTP error metadata and
+safe-method-only retries. POSTs never replay automatically. Device failures close normal streams
+and allow fresh activation; capture detects inactive/completed input, playback preserves primary
+errors through cleanup, and chunks use memoryviews. Cancellation no longer blocks on committed
+actions; history is staged until completed, clear invalidates old turns, adapters carry session IDs,
+shutdown is terminal/bounded, and an event client's partial headers cannot block server close.
 
-## Validation — 2026-11-15 Linux cloud
+Added optional health/config/resource snapshots, recent error codes, bounded mock effect history,
+TLS failure/recovery tests, steady-state/starter-process benchmarks, Windows executable probes,
+same-runner v0.2 package comparison, checksum/worker/backend/mock smokes, maintained action
+pin evaluation and workflow deduplication. No ORBIT/wake-word/hooks/persistence/model additions.
 
-- 121 tests passed, 2 Windows-only checks skipped; no failed/disabled/expected-failure tests.
-  Existing v0.1 tests remain passing. New tests exercise synthetic prerecorded WAV, actual capture/
-  output adapter code with fake streams, STT multipart/TTS JSON wire formats, provider failures,
-  missing configuration, ambiguity/shell denial, history bounds, state transitions, simultaneous
-  activation, cancellation during capture/STT/conversation/TTS/playback, legacy/voice contracts,
-  and corrupt portable checksum detection. No paid calls or live device streams in tests.
-- Ruff lint/format, strict mypy (32 source modules), actionlint 1.7.7 and git diff whitespace passed.
-- pip-audit including audio/packaging dependencies: no known vulnerabilities; local unpublished
-  jarvis-assistant package cannot be audited against PyPI and was explicitly reported as skipped.
-- sdist/wheel built; complete wheel RECORD/hash verification and zero mandatory runtime
-  dependencies check passed. Fresh wheel virtualenv ran mock conversation/voice CLI successfully.
-- Linux PyInstaller onedir includes the optional sounddevice import; mock voice completed and
-  frozen audio backend loaded without streams. Local Linux validation ZIP CRC passed:
-  compressed 15,007,374 bytes; extracted logical files 42,299,602 bytes. This is NOT a Windows ZIP.
-- Mock voice benchmark: 20 sessions, 31.51 ms sample including max audio fixture allocation,
-  last session 0.584 ms, traced allocation peak 3,891,929 bytes, max capture WAV 1,920,044 bytes.
-- Linux import sample: core current RSS 16,836 KiB vs core + audio 20,048 KiB (delta 3,212 KiB).
-  Not Windows idle memory/CPU, physical stream memory, network latency or a target guarantee.
-- Routing sample median 0.003883 ms, p99 0.008116 ms; constructor 0.123518 ms. See PERFORMANCE.md
-  for exclusions, dependency sizes, native-library provisioning and measurement limitations.
+## Cloud validation (2026-11-15)
 
-## Windows CI / artifacts / external blockers
+- 155 tests passed, 3 Windows-only checks skipped; no disabled/expected-failure/failed tests.
+  Original test intent remains, with wire mocks injected at the shared transport boundary.
+- Real loopback TLS tests cover certificate trust, blocked headers, slow-drip deadline,
+  response timeout, socket-worker cancellation/reaping, next-request recovery and controller
+  shutdown during a real active request. No paid/external API or physical device is needed.
+- Deterministic tests cover HTTP auth/429/5xx/partial/network errors, size/JSON/WAV rejection,
+  retry/backoff/capacity bounds, disconnect/missing/init/output cleanup, repeated activation,
+  stale callbacks, cancellation before action commit, deferred history and sanitized diagnostics.
+- Ruff lint/format, strict mypy (36 source files), actionlint 1.7.7, whitespace and wheel/sdist
+  RECORD/runtime-dependency checks passed. Fresh-wheel mock voice/health/worker smokes passed.
+- Dependency audit including optional audio/packaging: no known vulnerabilities. The local
+  unpublished JARVIS distribution is explicitly skipped by PyPI audit, not represented as audited.
+- Current Linux profiling, limitations and baseline comparisons are recorded in PERFORMANCE.md.
+  Steady-state 200 synthetic sessions after 128 warmup: retained delta 352 bytes, peak 61,399,
+  both histories 128, zero active request workers. This is not a physical-device leak test.
 
-Windows build succeeded for application commit 4b63443:
-https://github.com/AsherFerdinand/JARVIS/actions/runs/43713952022 (52 seconds).
-The run completed successfully, including Windows tests, dependency audit, packaging,
-backend/mock voice smokes, checksums and artifact upload. Linux CI also succeeded for the same
-application SHA: https://github.com/AsherFerdinand/JARVIS/actions/runs/43713952015 (23 seconds).
-Artifact JARVIS-0.2.0-windows is available on that Windows run (Actions wrapper displayed 9.15 MB).
-Its upload contents are the application ZIP, checksum and artifact-metrics.json. Wrapper size
-is NOT the application ZIP or extracted size. Exact ZIP/extracted bytes could not be retrieved
-from the unauthenticated HTML view; they are recorded in the artifact metrics and step summary.
-Do not substitute the Linux-only archive byte counts above for Windows sizes.
+## CI / Windows evidence
 
-REST/GraphQL GitHub APIs returned Forbidden; read-only public Actions HTML was a working
-status/artifact fallback. Raw step log URLs returned 404, so no hosted test count is claimed
-from log output. Automatic PR creation failed with GraphQL Forbidden; branch push succeeded.
-No merge or cloud-environment publication was performed. CI warns that pinned Node.js 20
-third-party actions are forced onto Node.js 24; checks still pass. Migrate pins in future CI work.
+Application commit 4134dfe passed Linux CI:
+https://github.com/AsherFerdinand/JARVIS/actions/runs/43758145286
+and Windows tests, baseline/current packaging, executable smokes, checksum and resource checks:
+https://github.com/AsherFerdinand/JARVIS/actions/runs/43758145275 (1m23s).
+JARVIS-0.3.0-windows is listed on that run. Sanitized public notices expose exact metrics without
+confusing the Actions wrapper with the application ZIP. ZIP 10,043,980 bytes; extracted 22,619,590.
+Same-runner v0.2: ZIP 9,641,975 / extracted 22,094,697 bytes (+4.17% / +2.38% respectively).
 
-## Known limitations and technical debt
+Hosted Windows five-second mock-idle sample: working set 27,922,432 bytes, private 19,755,008,
+no measured CPU-time increase, readiness 152.294 ms, clean natural exit code 0. See PERFORMANCE.md
+for exact method, OS/image, timing limits and why this does not establish laptop targets.
 
-- Live microphone/speaker, Windows GUI effects, real paid STT/TTS/chat endpoints and actual ORBIT
-  integration remain unvalidated. No model/voice is hardcoded; chosen provider must support the
-  documented JSON/WAV formats and language/rate options. Models and local inference are absent.
-- One worker can drain a pending urllib request after cancellation until socket timeout/response;
-  no new activation is allowed during that period. Timeout is not a total slow-drip deadline.
-  Cancellation cannot reverse an already committed action. No global keyboard hook is installed.
-- Exact but incorrectly recognized safe commands remain a provider/hardware risk. Ambiguous,
-  negated and multi-command text is not executed; AI replies are plain text only. Sensitive and
-  arbitrary shell actions remain unregistered; future sensitive work needs explicit confirmation.
-- Events remain bounded snapshots (128 entries) with restart/loss limitations. Default legacy
-  channel filters extensions; voice channel carries session metadata, optional transcript only
-  with explicit sharing. Local-account malware/availability remains outside the trust boundary.
-- Conversation keeps <=6 turns/16k characters in process memory. No audio or history files.
-- Default-config JSON in ZIP is informational. Unsigned portable executables remain a trust risk.
-- Linux initially lacked PortAudio; a trusted Debian package was verified/extracted locally for
-  import measurements. Core and mock tests run without native libraries or the audio extra.
+That first run still warned about upload-artifact v5 using Node.js 20. Its verified Node.js 24 v6
+replacement and separate internal backend-init timing are being revalidated on the final branch.
+REST/GraphQL API access was previously Forbidden; public Actions HTML is a working status/notice
+fallback. PR attempt/result and final checked SHA are recorded at task handoff. No merge or cloud
+configuration publication has been performed.
 
-## Next milestone / handoff
+## Remaining limitations / risks
 
-Inspect the successful Windows artifact and its metric summary; hosted compatibility
-checks do not prove real devices. v0.3 should address CI warnings, provider/device recovery and
-resource budgets before selecting further features. Keep historical checkpoint A/B hardware gaps
-explicit. Do not implement wake word, global hooks or ORBIT changes without a new assigned scope.
+- Real microphone/speaker/device changes, Windows GUI actions, paid provider behavior and actual
+  ORBIT compatibility remain untested. No user-side Windows install/test or live credential request.
+- Local HTTP cancellation terminates our process/socket, not remote provider work/charges.
+  Deadlines allow <=0.5 seconds process cleanup; OS scheduling/creation is not hard real-time.
+- A driver or custom adapter stuck in non-cooperative native code cannot safely be killed as a
+  Python thread. Controller close returns after <=2-second join and forbids replacement workers;
+  that exceptional case can require process restart. Normal failures/cancellations are reusable.
+- The action commit gate cannot reverse an operation already committed before cancellation.
+- History/events remain bounded process memory/snapshots, not persistent reliable delivery.
+  Default-config JSON remains informational. No sensitive/destructive capability was registered.
+- Unsigned executables and same-user malware remain outside distribution/local credential trust.
+- POSIX spawn may retain one CPython resource-tracker helper after the first request; Windows
+  uses native spawn handles. Request workers are bounded/reaped, with no idle helper preloading.
 
-User-side Windows installation/testing is NOT required or requested during this milestone.
+## Next milestone
+
+Finalize current CI evidence, then scope v0.4 around measured compatibility/provider/device gaps.
+Do not add deferred capabilities implicitly. Retain a separate future representative Windows
+hardware checkpoint; cloud/TLS/fake devices/shared runners do not prove laptop hardware readiness.

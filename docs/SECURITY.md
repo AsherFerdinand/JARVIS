@@ -39,3 +39,24 @@ Late cancelled responses are discarded; no new worker can overlap one draining a
 effects committed before cancellation are not reversible. No new sensitive actions or confirmation
 bypass was added. Exact STT errors can still misrecognize a safe allowlisted command; no destructive
 commands exist. Global keyboard hooks and wake-word capture remain absent.
+
+## v0.3 provider/diagnostic boundary
+
+Active request cancellation now kills/reaps the isolated local HTTP child instead of merely
+ignoring its response. It cannot undo work already accepted by a provider. TLS certificate and
+hostname verification stay on, HTTPS-only endpoints remain required, and redirects never forward
+credentials. Connection/read timeouts plus parent deadline protect against stalled/slow-drip peers.
+Authentication, throttling, server, TLS, partial-response, size and transport errors contain codes/
+status only. No response bodies, URL strings, key values, audio or conversations enter diagnostics.
+
+POSTs never retry automatically. GET/HEAD retry only transient failures with fixed attempt/backoff/
+deadline caps. Queueing is bounded by the same deadline and at most one request child is active.
+The IPC peer is our trusted local child; no remote pickle/deserialization protocol is exposed.
+Tests use a deliberately public localhost certificate/key fixture, never production credentials.
+
+Health checks report credential/configuration presence, not verified API authentication. Device
+names and endpoints are hidden (default/explicit selection only). Optional native backend loading
+opens no audio stream; it still depends on the host's installed driver/library implementation.
+Cancelled voice turns never commit history; cleared history cannot be restored by late completion.
+Event shutdown interrupts partial client requests. Unsigned build and same-account malware risks
+remain; no local hardware, live credential request, persistence, hooks or new capabilities added.

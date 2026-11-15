@@ -17,7 +17,7 @@ def main() -> None:
     assistant = Assistant(Config(), MockExecutor())
     controller = make_voice(assistant, mock_text="open youtube")
     tracemalloc.start()
-    for _ in range(10):
+    for _ in range(128):
         controller.start()
         controller.wait(5)
     gc.collect()
@@ -40,6 +40,7 @@ def main() -> None:
         json.dumps(
             {
                 "sessions": 200,
+                "warmup_sessions": 128,
                 "mock_elapsed_ms": elapsed,
                 "retained_bytes_delta": after - before,
                 "traced_peak_bytes": peak,

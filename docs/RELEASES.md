@@ -1,38 +1,24 @@
-# v0.2 portable builds
+# v0.3 portable builds
 
-No user-side Windows installation or testing is requested in this milestone.
-Windows CI remains the required platform packaging/compatibility gate; Linux mocks do not
-replace it. The workflow uploads these after successful checks:
+No local Windows installation or testing is required during this milestone. Windows Actions builds
+JARVIS-0.3.0-windows.zip and .zip.sha256, with artifact-metrics.json, baseline-artifact-metrics.json
+and windows-resources.json. A v0.3.0 tag or manual release workflow calls the same packaging job;
+branch/PR concurrency limits duplicate jobs, and tag pushes do not also launch branch packaging.
+No merge, installer, signing or GitHub Release publication occurs automatically.
 
-- JARVIS-0.2.0-windows.zip
-- JARVIS-0.2.0-windows.zip.sha256
-- artifact-metrics.json (compressed/extracted byte counts; optional measured baseline delta)
+CI installs locked Python 3.12 tooling/audio dependencies, runs tests/audit, archives exact v0.2
+source under ignored .cache (without modifying any checkout), and rebuilds that baseline in the
+same runner/toolchain. It then builds v0.3 with PyInstaller onedir, verifies text/system-info,
+mock voice, isolated worker spawn, health/backend load and PortAudio DLL presence. Complete ZIP
+manifest SHA256/CRC checks run before upload. Baseline/current sizes and deltas are reported as
+sanitized notices and JSON metrics; Actions wrapper size is not the application ZIP size.
 
-The tag v0.2.0 or manual release-candidate workflow reuses the Windows build. No automatic merge
-or GitHub Release publication occurs. Download only from a trusted successful Actions run.
+Windows resources use a finite 8-second mock-idle executable, with 5-second CPU/memory sampling,
+readiness/deadline checks, natural process exit and a separate backend-import process. The JSON
+records OS/runner/method/interval/limits. It is a shared-host sample, not a physical microphone,
+speaker, laptop idle or cold-cache benchmark. Private bytes/working set are distinct measurements.
 
-CI installs Python 3.12, frozen dependencies with the audio extra/packaging group, runs all tests
-and dependency audit, builds PyInstaller onedir, checks frozen text/native-system-info/mock-voice
-startup, loads its audio backend without opening streams, and checks the PortAudio DLL exists.
-It bundles quick-start, VERSION and an informational default JSON (not a configuration loader).
-SHA256SUMS covers every bundle file; archive CRC, complete manifest and each archived SHA256
-are verified before upload. The accompanying .sha256 covers the entire ZIP. Models and developer
-utilities/tests are not intentionally bundled. Self-contained runtime needs no user Python install.
-
-Artifact size differences are measured only when JARVIS_BASELINE_ZIP_BYTES is supplied with a
-real previous Windows ZIP size; otherwise the delta is null. No Windows v0.1 baseline is known.
-Unsigned executables remain a distribution trust risk. Actual Windows build status, artifact
-availability and measured sizes are recorded in PROGRESS.md; pipeline definitions are not results.
-
-## Future hardware checkpoint (not requested now)
-
-When Windows CI/artifacts and a subsequent validation phase are ready, verify the archive hash
-with `Get-FileHash -Algorithm SHA256`, extract, and check --version, --mock --command status,
---mock-voice 'Open YouTube.' --diagnostics, then explicit allowlisted GUI actions. Later consented
-voice checks must cover real input/output device selection, press/release limits, overflow/device
-loss, cancellation at every phase, English/German accuracy and cloud provider compatibility.
-Never claim these are proven by backend load or mocked tests. See VOICE.md and PERFORMANCE.md.
-
-The Windows packaging step also publishes exact artifact byte counts in the Actions
-job summary as well as the downloadable metric file. Availability of step summaries and
-artifact downloads can require GitHub authentication even when run status is public. The Actions artifact wrapper size is distinct from the application ZIP size.
+Download only from a trusted successful run. The portable runtime needs no user Python/dev tools
+and includes no speech/LLM models, test TLS keys, datasets or cache. The default JSON remains
+informational. Executables are unsigned; this remains a distribution-trust limitation. See
+PROGRESS.md for actual run links/status/sizes, not assumptions from workflow definitions.

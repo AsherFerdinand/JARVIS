@@ -45,3 +45,24 @@ text, retain history in memory only, and preserve exact legacy `/v1/events` shap
 fields/types live on `/v1/voice-events`; recognized text sharing defaults off. No wake word,
 global keyboard hooks, or ORBIT changes in this milestone. Do not request local Windows tests
 for v0.2; record Windows CI, ZIP and hardware evidence separately.
+
+## v0.3 reliability continuation
+
+Provider requests must use the shared isolated transport and obey connection/read/total bounds;
+never retry STT/TTS/chat POSTs automatically. Respect the global request slot and process cleanup.
+Frozen entry points require multiprocessing.freeze_support(); preserve --check-provider-worker
+packaging smoke. Never substitute thread cancellation for proof that a socket/remote work stopped.
+The disposable child can be killed locally; remote work/charges can persist. POSIX resource tracker
+may remain, but request children must not accumulate. Always call guarded script main functions.
+
+Use `uv run jarvis --health`, `uv run python scripts/benchmark_reliability.py`, and tests with
+loopback TLS/synthetic devices. Never request live keys or paid calls for routine validation.
+The checked-in localhost key is public test data, not an application credential. Controller close
+is terminal/bounded; normal cancel/failure remains recoverable. Defer voice history until completed.
+Preserve existing event names/legacy views and sanitize all error codes/health output.
+
+Windows CI rebuilds v0.2 from an ignored source archive for a same-runner size baseline, then
+builds v0.3, runs frozen worker/device/mock checks and finite CPU/memory/startup/exit probes.
+Inspect its notices, metric artifacts and exact tested SHA. Do not equate hosted results with
+representative laptop performance or physical device compatibility. Do not ask for local Windows
+testing during v0.3, merge automatically, modify ORBIT, or expand into excluded capabilities.

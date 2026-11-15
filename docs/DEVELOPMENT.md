@@ -33,3 +33,15 @@ memory; use `uv run --extra audio` plus native PortAudio to measure the actual a
 Linux uses system PortAudio; Windows wheels bundle it. Tests do not make paid API requests.
 Windows CI installs `--extra audio --group packaging`, tests native import without streams,
 then verifies the frozen backend, mock voice, DLL, ZIP contents and SHA256 manifest.
+
+## v0.3
+
+`uv run jarvis --health` needs no platform executor, credentials or native audio library. It reports
+presence/status only; --health --check-audio-backend explicitly probes native loading. `/diagnostics`
+adds current event-server state and recent sanitized codes. `--check-provider-worker` performs a
+bounded spawn/IPC smoke with no network. New transport integration tests run their own loopback
+TLS server and trust only its fixture CA; no external/paid API or physical audio device is needed.
+
+`uv run python scripts/benchmark_reliability.py` stresses 200 synthetic sessions and measures spawn
+cost, bounded histories and retained allocations. It is not a hardware or real-provider benchmark.
+All original lint/type/test/build/package-integrity/audit commands remain required.
