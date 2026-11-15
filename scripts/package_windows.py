@@ -106,6 +106,14 @@ def main() -> None:
         "delta_zip_bytes": archive.stat().st_size - previous if previous is not None else None,
     }
     (root / "dist/artifact-metrics.json").write_text(json.dumps(metrics, indent=2))
+    summary_path = os.getenv("GITHUB_STEP_SUMMARY")
+    if summary_path:
+        with Path(summary_path).open("a", encoding="utf-8") as summary:
+            summary.write(
+                "### Portable artifact metrics\n\n```json\n"
+                + json.dumps(metrics, indent=2)
+                + "\n```\n"
+            )
     print(f"ZIP bytes: {archive.stat().st_size}; SHA256: {digest}")
 
 

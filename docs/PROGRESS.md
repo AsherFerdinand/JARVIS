@@ -39,12 +39,19 @@ Windows audio-extra packaging with backend-load/mock-voice/DLL/manifest checks.
 
 ## Windows CI / artifacts / external blockers
 
-Windows workflow definitions include tests and the full portable ZIP/checksum pipeline, but their
-execution result is unconfirmed. GitHub REST API inspection returned Forbidden in this session.
-No Windows ZIP availability, compressed/extracted size or hosted check result is claimed.
-The only packaged executable actually run here was the Linux validation build.
-Git push/PR handoff results are reported at the end of the task; never substitute a saved workflow
-or successful source test for a Windows CI result. No cloud environment draft publication needed.
+Windows build succeeded for pushed commit beeb7259c0785781388ec615b3c5e9f1930e363c:
+https://github.com/AsherFerdinand/JARVIS/actions/runs/43713588856 (52 seconds).
+The public job page marks tests, dependency audit, packaging, backend/mock voice smokes,
+benchmarks and artifact upload successful. Linux CI also succeeded for the same SHA:
+https://github.com/AsherFerdinand/JARVIS/actions/runs/43713588839 (18 seconds).
+Artifact JARVIS-0.2.0-windows is listed (Actions wrapper 9.15 MB); its contents are the ZIP,
+checksum and metrics defined in the successful upload step. Wrapper size is not application
+ZIP/extracted size. Exact metrics will be recorded after the added public step summary runs.
+
+REST/GraphQL GitHub APIs returned Forbidden; read-only public Actions HTML was a working
+fallback. Raw step log URLs returned 404, so no hosted test count is claimed from log output.
+Automatic PR creation failed with GraphQL Forbidden; branch push succeeded. No merge or
+cloud-environment publication was performed.
 
 ## Known limitations and technical debt
 
@@ -67,8 +74,8 @@ or successful source test for a Windows CI result. No cloud environment draft pu
 
 ## Next milestone / handoff
 
-Before claiming v0.2 fully validated, inspect successful Windows CI and ZIP checks/artifact metrics
-using an authorized GitHub view. v0.3 should address those findings, provider/device recovery and
+Inspect the successful Windows artifact and the public metric summary; hosted compatibility
+checks do not prove real devices. v0.3 should address CI warnings, provider/device recovery and
 resource budgets before selecting further features. Keep historical checkpoint A/B hardware gaps
 explicit. Do not implement wake word, global hooks or ORBIT changes without a new assigned scope.
 

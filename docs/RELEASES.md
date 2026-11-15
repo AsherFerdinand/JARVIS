@@ -32,3 +32,7 @@ with `Get-FileHash -Algorithm SHA256`, extract, and check --version, --mock --co
 voice checks must cover real input/output device selection, press/release limits, overflow/device
 loss, cancellation at every phase, English/German accuracy and cloud provider compatibility.
 Never claim these are proven by backend load or mocked tests. See VOICE.md and PERFORMANCE.md.
+
+The Windows packaging step also publishes exact artifact byte counts in the public Actions
+job summary, so they can be inspected even when authenticated artifact download/API access
+is unavailable. The Actions artifact wrapper size is distinct from the application ZIP size.
