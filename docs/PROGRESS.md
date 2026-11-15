@@ -29,8 +29,10 @@ GUI launch, real API request, Windows hardware resource result, or actual ORBIT 
 has been validated in this cloud session. Speech is interfaces only. Model URL/key/name are
 optional and must all be supplied together. No secrets needed for baseline operation.
 
-Git HTTPS read access works. GitHub CLI authentication was reported invalid; branch push and
-PR creation are attempted at handoff and their exact outcome is reported separately.
+Git HTTPS read/push access works. Foundation commit 884f590 was pushed to
+feat/jarvis-v0.1-foundation. Automatic PR creation failed: GitHub GraphQL returned Forbidden.
+Open the PR through GitHub using this branch. Windows workflow results could not be inspected
+through the unavailable GitHub API; no CI execution outcome is claimed here.
 
 ## Known issues / technical debt
 - Snapshot history can lose events across 128 entries/restarts; client must deduplicate/reconcile.
