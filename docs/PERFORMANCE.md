@@ -37,7 +37,8 @@ For this host only: set LD_LIBRARY_PATH to .cache/native/usr/lib/x86_64-linux-gn
 benchmarks; fresh environments can use their distribution's trusted PortAudio package instead.
 
 Portable router sample: median 0.003883 ms, p99 0.008116 ms; constructor 0.123518 ms.
-Windows executable compressed/extracted sizes and resource targets remain pending Windows CI.
+Windows CI now records executable compressed/extracted sizes in the artifact metrics; exact
+metric retrieval in this session and representative Windows hardware resource targets remain unverified.
 The packaging workflow writes artifact-metrics.json rather than guessing a baseline delta.
 
 Linux-only v0.2 frozen validation archive: 15,007,374 compressed bytes; 42,299,602 extracted

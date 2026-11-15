@@ -39,19 +39,22 @@ Windows audio-extra packaging with backend-load/mock-voice/DLL/manifest checks.
 
 ## Windows CI / artifacts / external blockers
 
-Windows build succeeded for pushed commit beeb7259c0785781388ec615b3c5e9f1930e363c:
-https://github.com/AsherFerdinand/JARVIS/actions/runs/43713588856 (52 seconds).
-The public job page marks tests, dependency audit, packaging, backend/mock voice smokes,
-benchmarks and artifact upload successful. Linux CI also succeeded for the same SHA:
-https://github.com/AsherFerdinand/JARVIS/actions/runs/43713588839 (18 seconds).
-Artifact JARVIS-0.2.0-windows is listed (Actions wrapper 9.15 MB); its contents are the ZIP,
-checksum and metrics defined in the successful upload step. Wrapper size is not application
-ZIP/extracted size. Exact metrics will be recorded after the added public step summary runs.
+Windows build succeeded for application commit 4b63443:
+https://github.com/AsherFerdinand/JARVIS/actions/runs/43713952022 (52 seconds).
+The run completed successfully, including Windows tests, dependency audit, packaging,
+backend/mock voice smokes, checksums and artifact upload. Linux CI also succeeded for the same
+application SHA: https://github.com/AsherFerdinand/JARVIS/actions/runs/43713952015 (23 seconds).
+Artifact JARVIS-0.2.0-windows is available on that Windows run (Actions wrapper displayed 9.15 MB).
+Its upload contents are the application ZIP, checksum and artifact-metrics.json. Wrapper size
+is NOT the application ZIP or extracted size. Exact ZIP/extracted bytes could not be retrieved
+from the unauthenticated HTML view; they are recorded in the artifact metrics and step summary.
+Do not substitute the Linux-only archive byte counts above for Windows sizes.
 
 REST/GraphQL GitHub APIs returned Forbidden; read-only public Actions HTML was a working
-fallback. Raw step log URLs returned 404, so no hosted test count is claimed from log output.
-Automatic PR creation failed with GraphQL Forbidden; branch push succeeded. No merge or
-cloud-environment publication was performed.
+status/artifact fallback. Raw step log URLs returned 404, so no hosted test count is claimed
+from log output. Automatic PR creation failed with GraphQL Forbidden; branch push succeeded.
+No merge or cloud-environment publication was performed. CI warns that pinned Node.js 20
+third-party actions are forced onto Node.js 24; checks still pass. Migrate pins in future CI work.
 
 ## Known limitations and technical debt
 
@@ -74,7 +77,7 @@ cloud-environment publication was performed.
 
 ## Next milestone / handoff
 
-Inspect the successful Windows artifact and the public metric summary; hosted compatibility
+Inspect the successful Windows artifact and its metric summary; hosted compatibility
 checks do not prove real devices. v0.3 should address CI warnings, provider/device recovery and
 resource budgets before selecting further features. Keep historical checkpoint A/B hardware gaps
 explicit. Do not implement wake word, global hooks or ORBIT changes without a new assigned scope.

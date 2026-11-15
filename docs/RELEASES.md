@@ -33,6 +33,6 @@ voice checks must cover real input/output device selection, press/release limits
 loss, cancellation at every phase, English/German accuracy and cloud provider compatibility.
 Never claim these are proven by backend load or mocked tests. See VOICE.md and PERFORMANCE.md.
 
-The Windows packaging step also publishes exact artifact byte counts in the public Actions
-job summary, so they can be inspected even when authenticated artifact download/API access
-is unavailable. The Actions artifact wrapper size is distinct from the application ZIP size.
+The Windows packaging step also publishes exact artifact byte counts in the Actions
+job summary as well as the downloadable metric file. Availability of step summaries and
+artifact downloads can require GitHub authentication even when run status is public. The Actions artifact wrapper size is distinct from the application ZIP size.

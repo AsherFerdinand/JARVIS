@@ -1,7 +1,7 @@
 # JARVIS 0.2.0
 
 A lightweight Windows text assistant and future ORBIT automation engine. Mandatory runtime dependencies:
-Python standard library only; device audio is an optional extra. No local model, microphone capture, or telemetry.
+Python standard library only; device audio is an optional extra. No local model, automatic microphone capture, or telemetry.
 
 ```sh
 uv sync --locked

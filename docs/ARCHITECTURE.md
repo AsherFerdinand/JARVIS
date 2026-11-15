@@ -22,8 +22,8 @@ Poll only while a UI consumer is active, at a low frequency (e.g. 1 second); no 
 Single server limits threads and connection timeout bounds stalled clients; malicious local
 clients can still deny service. FastAPI/WebSockets are deferred until measured demand.
 
-Speech protocols describe replaceable STT/TTS/wake-word/microphone/output boundaries only.
-No model selection or implementation is made. Future Ollama support can implement Provider;
+In v0.1, speech protocols described STT/TTS/wake-word/microphone/output boundaries only.
+v0.2 implementations are described below. No local speech model is selected or bundled. Future Ollama support can implement Provider;
 no local model or provider daemon is started now.
 
 ## v0.2 voice extension

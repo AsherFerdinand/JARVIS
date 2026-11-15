@@ -1,6 +1,6 @@
 # Security and privacy
 
-No credentials committed, logs of commands, conversation persistence, telemetry, microphone,
+No credentials committed, logs of commands, conversation persistence, telemetry, automatic microphone access,
 file/screenshot uploads, shell execution, or destructive actions. Approved names map to fixed
 HTTPS websites and Windows System32 Notepad. The registry rejects unapproved AI output.
 No confirmation bypass flag exists. Future destructive actions require a separately reviewed,

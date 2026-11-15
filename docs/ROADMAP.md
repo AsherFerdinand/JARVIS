@@ -3,8 +3,8 @@
 - Phase 0 / v0.1: foundation merged into main; text routing, boundaries, protocol, CI and docs.
 - v0.2 (this branch): optional push-to-talk capture, cloud/mock STT/TTS, bounded conversations,
   explicit cancellable sessions, legacy-compatible voice events, tests and portable packaging.
-- Validation carryover: successful Windows CI/ZIP and representative hardware evidence for
-  checkpoints A/B remain pending. v0.2 is cloud-only; no local installation/testing requested.
+- Validation: Windows CI/ZIP succeeded (see PROGRESS.md). Representative hardware evidence
+  for checkpoints A/B remains pending. v0.2 is cloud-only; no local installation/testing requested.
 - v0.3 recommendation: harden from Windows CI evidence; validate cancellation/device recovery,
   provider compatibility and resource budgets before considering a consented global shortcut.
   No wake word or ORBIT modification is implicitly authorized by this roadmap.
