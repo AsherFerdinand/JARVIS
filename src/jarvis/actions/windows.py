@@ -19,10 +19,12 @@ class MockExecutor:
 
     def open_website(self, url: str) -> str:
         self.calls.append(("website", url))
+        del self.calls[:-128]
         return "Website opened (mock)"
 
     def open_application(self, name: str, executable: str) -> str:
         self.calls.append(("application", executable))
+        del self.calls[:-128]
         return f"{name} opened (mock)"
 
     def application_status(self, name: str) -> str:

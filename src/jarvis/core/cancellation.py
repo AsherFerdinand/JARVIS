@@ -17,8 +17,9 @@ class Cancellation:
         self._lock = RLock()
 
     def cancel(self) -> None:
-        with self._lock:
-            self.event.set()
+        # A successful check in commit is the side-effect linearization point.
+        # Cancellation never waits for an already committed OS operation.
+        self.event.set()
 
     def check(self) -> None:
         if self.event.is_set():

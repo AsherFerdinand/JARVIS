@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import dataclass
+from threading import Lock
 from typing import Protocol
 
 from jarvis.core.cancellation import Cancellation
@@ -13,6 +14,13 @@ from jarvis.speech.cloud import Endpoint
 class Reply:
     text: str
     total_tokens: int | None = None
+
+
+@dataclass(frozen=True)
+class PendingTurn:
+    question: str
+    reply: Reply
+    generation: int
 
 
 class ChatProvider(Protocol):
@@ -38,7 +46,7 @@ class CloudConversation:
             if tokens is not None and (type(tokens) is not int or tokens < 0):
                 raise ValueError("Invalid token count")
             return Reply(text, tokens)
-        except (ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
+        except (ValueError, TypeError, KeyError, IndexError, AttributeError, RecursionError) as exc:
             raise ProviderError("Invalid conversation response") from exc
 
 
@@ -62,21 +70,32 @@ class Conversation:
             raise ValueError("Supported languages are en and de")
         self.provider, self.max_turns, self.max_characters = provider, max_turns, max_characters
         self.language = language
+        self._lock = Lock()
+        self._generation = 0
         self._turns: list[tuple[str, str]] = []
         self.total_tokens = 0
 
     @property
     def history(self) -> tuple[tuple[str, str], ...]:
-        return tuple(self._turns)
+        with self._lock:
+            return tuple(self._turns)
 
     def clear(self) -> None:
-        self._turns.clear()
+        with self._lock:
+            self._turns.clear()
+            self._generation += 1
 
     def respond(self, text: str, cancel: Cancellation) -> Reply:
+        pending = self.prepare(text, cancel)
+        self.commit_turn(pending, cancel)
+        return pending.reply
+
+    def prepare(self, text: str, cancel: Cancellation) -> PendingTurn:
         if not text.strip() or len(text) > 4096:
             raise ValueError("Conversation input must contain 1–4096 characters")
         cancel.check()
-        context = list(self._turns)
+        with self._lock:
+            context, generation = list(self._turns), self._generation
         while (
             context and sum(len(a) + len(b) for a, b in context) + len(text) > self.max_characters
         ):
@@ -97,14 +116,20 @@ class Conversation:
         if not reply.text.strip() or len(reply.text) > 4096:
             raise ProviderError("Invalid conversation response")
 
+        cancel.check()
+        return PendingTurn(text, reply, generation)
+
+    def commit_turn(self, pending: PendingTurn, cancel: Cancellation) -> None:
         def save() -> None:
-            self._turns.append((text, reply.text))
-            while (
-                len(self._turns) > self.max_turns
-                or sum(len(a) + len(b) for a, b in self._turns) > self.max_characters
-            ):
-                self._turns.pop(0)
-            self.total_tokens += reply.total_tokens or 0
+            with self._lock:
+                if pending.generation != self._generation:
+                    return
+                self._turns.append((pending.question, pending.reply.text))
+                while (
+                    len(self._turns) > self.max_turns
+                    or sum(len(a) + len(b) for a, b in self._turns) > self.max_characters
+                ):
+                    self._turns.pop(0)
+                self.total_tokens += pending.reply.total_tokens or 0
 
         cancel.commit(save)
-        return reply

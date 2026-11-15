@@ -22,7 +22,14 @@ def endpoint_from_environment(prefix: str) -> Endpoint:
     url, model, key = (os.getenv(f"{prefix}_{field}", "") for field in ("URL", "MODEL", "KEY"))
     if not all((url, model, key)):
         raise ValueError(f"Configure {prefix}_URL, {prefix}_MODEL and {prefix}_KEY")
-    return Endpoint(url, key, model, float(os.getenv(f"{prefix}_TIMEOUT", "15")))
+    return Endpoint(
+        url,
+        key,
+        model,
+        float(os.getenv(f"{prefix}_TIMEOUT", "15")),
+        float(os.getenv(f"{prefix}_CONNECT_TIMEOUT", "10")),
+        float(os.getenv(f"{prefix}_DEADLINE", "30")),
+    )
 
 
 def make_voice(

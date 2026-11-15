@@ -1,17 +1,21 @@
 import argparse
 import json
+import multiprocessing
 import os
 from pathlib import Path
+from threading import Event
 
 from jarvis import __version__
 from jarvis.actions.windows import MockExecutor, WindowsExecutor
 from jarvis.config import Config
 from jarvis.core.lifecycle import Assistant
 from jarvis.core.voice_controller import PushToTalkAdapter, VoiceController
+from jarvis.diagnostics.health import health
 from jarvis.diagnostics.logging import configure
 from jarvis.integration.server import EventServer
 from jarvis.intelligence.conversation import CloudConversation, Conversation
 from jarvis.intelligence.provider import ProviderError
+from jarvis.intelligence.transport import ProcessTransport
 from jarvis.speech.audio import AudioError
 from jarvis.speech.audio_devices import audio_backend, list_devices
 from jarvis.speech.session import State
@@ -40,6 +44,15 @@ def main() -> int:
     parser.add_argument(
         "--check-audio-backend", action="store_true", help="Load audio without streams"
     )
+    parser.add_argument(
+        "--health", action="store_true", help="Sanitized configuration/resource report"
+    )
+    parser.add_argument(
+        "--check-provider-worker", action="store_true", help="Check isolated provider runtime"
+    )
+    parser.add_argument(
+        "--idle-probe", type=float, help="Explicit bounded idle measurement interval"
+    )
     args = parser.parse_args()
     server = None
     assistant = None
@@ -47,6 +60,13 @@ def main() -> int:
     try:
         logger = configure(args.log_file)
         logger.info("Assistant starting")
+        if args.health:
+            print(json.dumps(health(probe_audio=args.check_audio_backend), indent=2))
+            return 0
+        if args.check_provider_worker:
+            ProcessTransport().probe()
+            print("Provider worker available")
+            return 0
         if args.check_audio_backend:
             audio_backend()
             print("Audio backend available; no stream opened")
@@ -83,12 +103,22 @@ def main() -> int:
             )
             server.start()
             print(f"Event channel: 127.0.0.1:{server.port}")
+        if args.idle_probe is not None:
+            if not 0 < args.idle_probe <= 30 or controller is not None or args.command is not None:
+                raise ValueError("Idle probe requires standalone text mode, 0–30 seconds")
+            print("JARVIS ready", flush=True)
+            Event().wait(args.idle_probe)
+            return 0
         if args.voice_file or args.mock_voice is not None:
             if controller is None:
                 raise ValueError("Voice not configured")
             controller.start()
             result = controller.wait()
-            print(result.response or result.error_code or result.state.current)
+            print(
+                result.response
+                if result.state.current == State.COMPLETED
+                else result.error_code or result.state.current
+            )
             if args.diagnostics:
                 print(
                     json.dumps(
@@ -118,6 +148,16 @@ def main() -> int:
                 except EOFError:
                     break
                 try:
+                    if text == "/diagnostics":
+                        print(
+                            json.dumps(
+                                health(
+                                    events=assistant.events,
+                                    event_port=server.port if server else None,
+                                )
+                            )
+                        )
+                        continue
                     if controller is not None and text == args.voice_trigger:
                         adapter = PushToTalkAdapter(controller)
                         adapter.press()
@@ -131,7 +171,11 @@ def main() -> int:
                             else:
                                 adapter.release()
                         result = controller.wait()
-                        print(result.response or result.error_code or result.state.current)
+                        print(
+                            result.response
+                            if result.state.current == State.COMPLETED
+                            else result.error_code or result.state.current
+                        )
                         continue
                     print(assistant.handle(text))
                     if args.diagnostics:
@@ -163,4 +207,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()
     raise SystemExit(main())

@@ -38,3 +38,13 @@ def test_windows_audio_extra_loads_without_streams():
     from jarvis.speech.audio_devices import audio_backend
 
     assert audio_backend().__version__ == "0.5.3"
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows process metric APIs")
+def test_windows_resource_snapshot():
+    from jarvis.diagnostics.resources import process_resources
+
+    snapshot = process_resources()
+    assert snapshot["working_set_bytes"] > 0
+    assert snapshot["private_bytes"] > 0
+    assert snapshot["cpu_seconds"] >= 0

@@ -5,6 +5,7 @@ from urllib.error import URLError
 import pytest
 
 from jarvis.intelligence.provider import OpenAIProvider, ProviderError
+from jarvis.intelligence.transport import exchange, unwrap
 
 
 class Response(io.BytesIO):
@@ -16,7 +17,7 @@ class Opener:
         self.body = body
 
     def open(self, request, timeout):
-        assert timeout == 15
+        assert timeout == 10
         assert request.get_header("Authorization") == "Bearer test-key"
         return Response(self.body)
 
@@ -28,7 +29,10 @@ def test_structured_response(monkeypatch):
             "usage": {"total_tokens": 8},
         }
     ).encode()
-    monkeypatch.setattr("jarvis.intelligence.provider._opener", lambda: Opener(body))
+    monkeypatch.setattr(
+        "jarvis.intelligence.transport.ProcessTransport.request",
+        lambda self, call, cancel, total: unwrap(exchange(call, Opener(body))),
+    )
     result = OpenAIProvider(
         "https://api.example/v1/chat/completions", "test", "test-key"
     ).interpret("hi")
@@ -42,7 +46,10 @@ def test_structured_response(monkeypatch):
     ids=["invalid-json", "missing", "oversize", "wrong-shape"],
 )
 def test_bad_response(monkeypatch, body):
-    monkeypatch.setattr("jarvis.intelligence.provider._opener", lambda: Opener(body))
+    monkeypatch.setattr(
+        "jarvis.intelligence.transport.ProcessTransport.request",
+        lambda self, call, cancel, total: unwrap(exchange(call, Opener(body))),
+    )
     with pytest.raises(ProviderError):
         OpenAIProvider("https://api.example/v1/chat/completions", "test", "test-key").interpret(
             "hi"
@@ -54,7 +61,10 @@ def test_network_error(monkeypatch):
         def open(self, request, timeout):
             raise URLError("unavailable")
 
-    monkeypatch.setattr("jarvis.intelligence.provider._opener", BrokenOpener)
+    monkeypatch.setattr(
+        "jarvis.intelligence.transport.ProcessTransport.request",
+        lambda self, call, cancel, total: unwrap(exchange(call, BrokenOpener())),
+    )
     with pytest.raises(ProviderError):
         OpenAIProvider("https://api.example/v1/chat/completions", "test", "test-key").interpret(
             "hi"
@@ -72,9 +82,9 @@ def test_url_restrictions(url):
 def test_redirects_rejected():
     from urllib.request import HTTPRedirectHandler, Request
 
-    from jarvis.intelligence.provider import _opener
+    from jarvis.intelligence.transport import _opener
 
-    handlers = [h for h in _opener().handlers if isinstance(h, HTTPRedirectHandler)]
+    handlers = [h for h in _opener(15, lambda: None).handlers if isinstance(h, HTTPRedirectHandler)]
     assert len(handlers) == 1
     request = Request("https://api.example/v1/chat/completions")
     assert (
@@ -87,7 +97,10 @@ def test_usage_shape_rejected(monkeypatch):
     body = json.dumps(
         {"choices": [{"message": {"content": '{"action":"assistant_status"}'}}], "usage": []}
     ).encode()
-    monkeypatch.setattr("jarvis.intelligence.provider._opener", lambda: Opener(body))
+    monkeypatch.setattr(
+        "jarvis.intelligence.transport.ProcessTransport.request",
+        lambda self, call, cancel, total: unwrap(exchange(call, Opener(body))),
+    )
     with pytest.raises(ProviderError):
         OpenAIProvider("https://api.example/v1/chat/completions", "test", "test-key").interpret(
             "hi"

@@ -1,5 +1,6 @@
 """Explicit activation only. Bounded capture and no disk recordings."""
 
+import time
 from pathlib import Path
 from threading import Event
 
@@ -41,6 +42,8 @@ class MicrophoneCapture:
         limit = int(seconds * 16000) * 2
         buffer = bytearray()
         failure = Event()
+        expected_stop = Event()
+        started = False
 
         def callback(data: object, frames: int, timing: object, status: object) -> None:
             if status:
@@ -48,8 +51,16 @@ class MicrophoneCapture:
                 release.set()
                 raise backend.CallbackStop
             if release.is_set() or cancel.event.is_set() or len(buffer) >= limit:
+                expected_stop.set()
+                release.set()
                 raise backend.CallbackStop
-            buffer.extend(bytes(data)[: limit - len(buffer)])  # type: ignore[call-overload]
+            # Copy only the accepted slice, not an entire oversized input chunk.
+            buffer.extend(memoryview(data).cast("B")[: limit - len(buffer)])  # type: ignore[arg-type]
+
+        def finished() -> None:
+            if not expected_stop.is_set() and not release.is_set() and not cancel.event.is_set():
+                failure.set()
+            release.set()
 
         try:
             with backend.RawInputStream(
@@ -59,14 +70,27 @@ class MicrophoneCapture:
                 blocksize=1024,
                 device=self.device,
                 callback=callback,
-            ):
-                # Controller cancellation also signals release. No busy polling.
-                release.wait(seconds)
-        except Exception as exc:
-            raise AudioError("Microphone unavailable or capture failed") from exc
+                finished_callback=finished,
+            ) as stream:
+                started = True
+                deadline = time.monotonic() + seconds
+                while not release.wait(min(0.05, max(0, deadline - time.monotonic()))):
+                    cancel.check()
+                    if time.monotonic() >= deadline:
+                        break
+                    if not getattr(stream, "active", True):
+                        raise AudioError("Microphone disconnected", "audio_input_disconnected")
+        except Cancelled:
+            raise
+        except AudioError:
+            raise
+        except Exception:
+            cancel.check()
+            code = "audio_input_interrupted" if started else "audio_input_unavailable"
+            raise AudioError("Microphone unavailable or capture failed", code) from None
         cancel.check()
         if failure.is_set():
-            raise AudioError("Microphone overflow or device failure")
+            raise AudioError("Microphone overflow or device failure", "audio_input_interrupted")
         audio = encode_wav(bytes(buffer))
         decode_wav(audio, require_sound=True)
         return audio
@@ -80,6 +104,7 @@ class DevicePlayback:
         pcm = decode_wav(audio)
         cancel.check()
         backend = audio_backend()
+        started = False
         try:
             with backend.RawOutputStream(
                 samplerate=pcm.rate,
@@ -88,20 +113,27 @@ class DevicePlayback:
                 blocksize=1024,
                 device=self.device,
             ) as stream:
+                started = True
+                data = memoryview(pcm.data)
                 step = 1024 * pcm.channels * 2
                 try:
                     for offset in range(0, len(pcm.data), step):
                         cancel.check()
-                        if stream.write(pcm.data[offset : offset + step]):
+                        if stream.write(data[offset : offset + step]):
                             raise AudioError("Playback underflow")
                     cancel.check()
                 except BaseException:
-                    stream.abort()
+                    try:
+                        stream.abort()
+                    except Exception:  # noqa: S110 -- primary exception preserved, close still runs
+                        pass  # Preserve the primary error; context exit still attempts close.
                     raise
         except Cancelled:
             raise
-        except Exception as exc:
-            raise AudioError("Speaker unavailable or playback failed") from exc
+        except Exception:
+            cancel.check()
+            code = "audio_output_interrupted" if started else "audio_output_unavailable"
+            raise AudioError("Speaker unavailable or playback failed", code) from None
 
 
 class MockPlayback:

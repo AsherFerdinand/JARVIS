@@ -102,3 +102,101 @@ def test_cancelled_playback_aborts_and_closes(monkeypatch):
     with pytest.raises(Cancelled):
         DevicePlayback().play(synthetic_wav(), cancel)
     assert calls == ["abort", "closed"]
+
+
+def test_disconnected_input_closes_and_next_session_recovers(monkeypatch):
+    release = Event()
+    closed = []
+
+    class Disconnected:
+        active = False
+
+        def __init__(self, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            closed.append(True)
+
+    monkeypatch.setattr(
+        "jarvis.speech.audio_capture.audio_backend",
+        lambda: SimpleNamespace(RawInputStream=Disconnected),
+    )
+    with pytest.raises(AudioError) as error:
+        MicrophoneCapture().record(release, Cancellation(), 1)
+    assert error.value.code == "audio_input_disconnected"
+    assert closed == [True]
+
+    class Recovered(Disconnected):
+        def __init__(self, **kwargs):
+            self.callback = kwargs["callback"]
+
+        def __enter__(self):
+            self.callback(memoryview(decode_wav(synthetic_wav()).data), 1600, None, False)
+            release.set()
+            return self
+
+    monkeypatch.setattr(
+        "jarvis.speech.audio_capture.audio_backend",
+        lambda: SimpleNamespace(RawInputStream=Recovered),
+    )
+    assert MicrophoneCapture().record(release, Cancellation(), 1)
+    assert closed == [True, True]
+
+
+def test_unexpected_input_completion_is_detected(monkeypatch):
+    closed = []
+
+    class Stream:
+        def __init__(self, **kwargs):
+            self.finished = kwargs["finished_callback"]
+
+        def __enter__(self):
+            self.finished()
+            return self
+
+        def __exit__(self, *args):
+            closed.append(True)
+
+    monkeypatch.setattr(
+        "jarvis.speech.audio_capture.audio_backend", lambda: SimpleNamespace(RawInputStream=Stream)
+    )
+    with pytest.raises(AudioError) as error:
+        MicrophoneCapture().record(Event(), Cancellation(), 1)
+    assert error.value.code == "audio_input_interrupted"
+    assert closed == [True]
+
+
+@pytest.mark.parametrize("initialization", [True, False])
+def test_speaker_failure_closes_and_has_sanitized_code(monkeypatch, initialization):
+    closed = []
+
+    class Stream:
+        def __init__(self, **kwargs):
+            if initialization:
+                raise OSError("private device detail")
+
+        def __enter__(self):
+            return self
+
+        def write(self, data):
+            raise OSError("private device detail")
+
+        def abort(self):
+            raise OSError("cleanup detail")
+
+        def __exit__(self, *args):
+            closed.append(True)
+
+    monkeypatch.setattr(
+        "jarvis.speech.audio_capture.audio_backend", lambda: SimpleNamespace(RawOutputStream=Stream)
+    )
+    with pytest.raises(AudioError) as error:
+        DevicePlayback().play(synthetic_wav(), Cancellation())
+    assert error.value.code == (
+        "audio_output_unavailable" if initialization else "audio_output_interrupted"
+    )
+    assert "private" not in str(error.value)
+    assert closed == ([] if initialization else [True])

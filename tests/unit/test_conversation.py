@@ -55,3 +55,11 @@ def test_failed_reply_not_retained():
     with pytest.raises(ProviderError):
         conversation.respond("question", Cancellation())
     assert not conversation.history
+
+
+def test_history_clear_invalidates_prepared_turn():
+    conversation = Conversation(MockConversation())
+    pending = conversation.prepare("question", Cancellation())
+    conversation.clear()
+    conversation.commit_turn(pending, Cancellation())
+    assert not conversation.history

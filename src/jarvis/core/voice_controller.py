@@ -8,7 +8,8 @@ from threading import Event, Lock, Thread
 from jarvis.core.cancellation import Cancellation, Cancelled
 from jarvis.core.lifecycle import Assistant
 from jarvis.integration.protocol import event
-from jarvis.intelligence.conversation import Conversation
+from jarvis.intelligence.conversation import Conversation, PendingTurn
+from jarvis.intelligence.errors import ProviderError
 from jarvis.speech.audio import AudioError
 from jarvis.speech.ports import Capture, Playback, Synthesizer, Transcriber
 from jarvis.speech.session import TERMINAL, SessionState, State
@@ -49,6 +50,7 @@ class VoiceController:
         self.max_seconds, self.share_transcript = max_seconds, share_transcript
         self.language = language
         self._lock = Lock()
+        self._closed = False
         self._thread: Thread | None = None
         self._cancel = Cancellation()
         self._release = Event()
@@ -61,6 +63,8 @@ class VoiceController:
 
     def start(self) -> str:
         with self._lock:
+            if self._closed:
+                raise RuntimeError("Voice controller closed")
             if self._thread is not None and self._thread.is_alive():
                 raise RuntimeError("A voice session is already active or draining")
             if not self.assistant.running:
@@ -68,42 +72,56 @@ class VoiceController:
             self._cancel, self._release = Cancellation(), Event()
             self.result = VoiceResult(str(uuid.uuid4()))
             self._thread = Thread(
-                target=self._run, args=(self.result,), daemon=True, name="jarvis-voice"
+                target=self._run,
+                args=(self.result, self._cancel, self._release),
+                daemon=True,
+                name="jarvis-voice",
             )
             self._thread.start()
             return self.result.session_id
 
-    def release(self) -> None:
+    def release(self, session_id: str | None = None) -> None:
         with self._lock:
+            if session_id is not None and (
+                self.result is None or self.result.session_id != session_id
+            ):
+                return
             release = self._release
         release.set()
 
-    def cancel(self) -> None:
+    def cancel(self, session_id: str | None = None) -> None:
         with self._lock:
+            if session_id is not None and (
+                self.result is None or self.result.session_id != session_id
+            ):
+                return
             cancel, release = self._cancel, self._release
         cancel.cancel()
         release.set()
 
     def wait(self, timeout: float | None = None) -> VoiceResult:
-        thread = self._thread
-        if thread is None or self.result is None:
+        with self._lock:
+            thread, result = self._thread, self.result
+        if thread is None or result is None:
             raise RuntimeError("No voice session")
         thread.join(timeout)
         if thread.is_alive():
             raise TimeoutError("Voice session still draining")
-        return self.result
+        return result
 
     def close(self) -> None:
+        with self._lock:
+            self._closed = True
         self.cancel()
         try:
             self.wait(2)
         except (RuntimeError, TimeoutError):
             pass
 
-    def _run(self, result: VoiceResult) -> None:
-        cancel, release = self._cancel, self._release
+    def _run(self, result: VoiceResult, cancel: Cancellation, release: Event) -> None:
         started = time.perf_counter()
         playback_started = False
+        pending: PendingTurn | None = None
 
         def emit(kind: str, *, text: str | None = None, error: str | None = None) -> None:
             self.assistant.events.publish(
@@ -163,7 +181,8 @@ class VoiceController:
             elif self.conversation is not None:
                 # Conversations return plain text only. They cannot invoke any action,
                 # including an uncertain multi-command transcription.
-                reply = self.conversation.respond(text, cancel)
+                pending = self.conversation.prepare(text, cancel)
+                reply = pending.reply
                 result.response, result.total_tokens = reply.text, reply.total_tokens
             else:
                 raise ValueError("Unknown command and no conversation provider")
@@ -191,19 +210,27 @@ class VoiceController:
                 cancel.check()
                 result.timings_ms["speech"] = (time.perf_counter() - phase) * 1000
                 emit("voice.playback.completed")
-            cancel.commit(lambda: move(State.COMPLETED))
+
+            def complete() -> None:
+                if pending is not None and self.conversation is not None:
+                    self.conversation.commit_turn(pending, cancel)
+                move(State.COMPLETED)
+
+            cancel.commit(complete)
         except Cancelled:
+            result.response = None
             if playback_started:
                 emit("voice.playback.cancelled")
             move(State.CANCELLED)
         except Exception as exc:
             if cancel.event.is_set():
+                result.response = None
                 if playback_started:
                     emit("voice.playback.cancelled")
                 move(State.CANCELLED)
             else:
                 result.error_code = (
-                    "audio_failure" if isinstance(exc, AudioError) else "voice_failure"
+                    exc.code if isinstance(exc, AudioError | ProviderError) else "voice_failure"
                 )
                 move(State.FAILED)
         finally:
@@ -219,12 +246,16 @@ class PushToTalkAdapter:
 
     def __init__(self, controller: VoiceController) -> None:
         self.controller = controller
+        self.session_id: str | None = None
 
     def press(self) -> str:
-        return self.controller.start()
+        self.session_id = self.controller.start()
+        return self.session_id
 
     def release(self) -> None:
-        self.controller.release()
+        if self.session_id is not None:
+            self.controller.release(self.session_id)
 
     def cancel(self) -> None:
-        self.controller.cancel()
+        if self.session_id is not None:
+            self.controller.cancel(self.session_id)

@@ -11,6 +11,10 @@ MAX_RECORD_SECONDS = 60
 class AudioError(Exception):
     """Safe user-facing code; no provider payload or device identifiers."""
 
+    def __init__(self, message: str, code: str = "audio_failure") -> None:
+        super().__init__(message)
+        self.code = code
+
 
 @dataclass(frozen=True)
 class PCM:

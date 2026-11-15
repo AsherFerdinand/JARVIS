@@ -8,6 +8,7 @@ from jarvis.core.cancellation import Cancellation
 from jarvis.core.event_bus import EventBus
 from jarvis.integration.protocol import event
 from jarvis.intelligence.conversation import Conversation
+from jarvis.intelligence.errors import ProviderError
 from jarvis.intelligence.provider import Provider
 from jarvis.intelligence.router import Router
 
@@ -43,8 +44,10 @@ class Assistant:
         self.total_tokens = None
         correlation = correlation_id or str(uuid.uuid4())
 
-        def emit(kind: str, application: str | None = None) -> None:
-            self.events.publish(event(kind, correlation, application, session_id=session_id))
+        def emit(kind: str, application: str | None = None, error: str | None = None) -> None:
+            self.events.publish(
+                event(kind, correlation, application, session_id=session_id, error_info=error)
+            )
 
         if emit_status:
             emit("assistant.processing")
@@ -83,8 +86,11 @@ class Assistant:
                     result_text = "JARVIS ready"
             emit("command.completed", intent.target)
             return result_text
-        except Exception:
-            emit("command.failed")
+        except Exception as exc:
+            emit(
+                "command.failed",
+                error=exc.code if isinstance(exc, ProviderError) else "action_failed",
+            )
             raise
         finally:
             if emit_status:

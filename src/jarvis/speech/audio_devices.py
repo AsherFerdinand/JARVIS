@@ -10,7 +10,10 @@ def audio_backend() -> ModuleType:
     try:
         return import_module("sounddevice")
     except (ImportError, OSError) as exc:
-        raise AudioError("Audio backend unavailable; install the audio extra") from exc
+        raise AudioError(
+            "Audio backend unavailable; install audio extra and native PortAudio",
+            "audio_backend_unavailable",
+        ) from exc
 
 
 def list_devices() -> str:

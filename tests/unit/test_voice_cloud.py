@@ -9,6 +9,7 @@ import pytest
 from jarvis.core.cancellation import Cancellation, Cancelled
 from jarvis.intelligence.conversation import CloudConversation
 from jarvis.intelligence.provider import ProviderError
+from jarvis.intelligence.transport import exchange, unwrap
 from jarvis.speech.audio import AudioError, decode_wav, encode_wav, synthetic_wav
 from jarvis.speech.cloud import CloudSTT, CloudTTS, Endpoint
 
@@ -27,7 +28,10 @@ class Transport:
 @pytest.fixture
 def transport(monkeypatch):
     fake = Transport(b"{}")
-    monkeypatch.setattr("jarvis.speech.cloud._opener", lambda: fake)
+    monkeypatch.setattr(
+        "jarvis.intelligence.transport.ProcessTransport.request",
+        lambda self, call, cancel, total: unwrap(exchange(call, fake)),
+    )
     return fake
 
 
@@ -108,7 +112,10 @@ def test_network_failure(monkeypatch, failure):
         def open(self, *args, **kwargs):
             raise failure
 
-    monkeypatch.setattr("jarvis.speech.cloud._opener", Broken)
+    monkeypatch.setattr(
+        "jarvis.intelligence.transport.ProcessTransport.request",
+        lambda self, call, cancel, total: unwrap(exchange(call, Broken())),
+    )
     with pytest.raises(ProviderError):
         CloudSTT(endpoint()).transcribe(synthetic_wav(), Cancellation())
 

@@ -2,11 +2,54 @@
 
 import hmac
 import json
+import logging
+import socket
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from threading import Thread
+from threading import Event as ThreadEvent
+from threading import Lock, Thread
 
 from jarvis.core.event_bus import EventBus
 from jarvis.integration.protocol import LEGACY_EVENT_TYPES
+
+
+class LocalServer(HTTPServer):
+    def __init__(self, address: tuple[str, int], handler: type[BaseHTTPRequestHandler]) -> None:
+        self._connection_lock = Lock()
+        self._closing = ThreadEvent()
+        self._active: socket.socket | None = None
+        super().__init__(address, handler)
+
+    def get_request(self) -> tuple[socket.socket, tuple[str, int]]:
+        connection, address = super().get_request()
+        with self._connection_lock:
+            if self._closing.is_set():
+                connection.close()
+                raise OSError("Server stopping")
+            self._active = connection
+        return connection, address
+
+    def shutdown_request(self, request: socket.socket | tuple[bytes, socket.socket]) -> None:
+        if not isinstance(request, socket.socket):
+            raise TypeError("TCP socket required")
+        try:
+            super().shutdown_request(request)
+        finally:
+            with self._connection_lock:
+                if self._active is request:
+                    self._active = None
+
+    def handle_error(self, request: object, client_address: object) -> None:
+        logging.getLogger("jarvis").debug("Event client disconnected")
+
+    def interrupt_client(self) -> None:
+        self._closing.set()
+        with self._connection_lock:
+            connection = self._active
+        if connection is not None:
+            try:
+                connection.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                return  # Client already closed; server shutdown still follows.
 
 
 class EventServer:
@@ -49,7 +92,7 @@ class EventServer:
                 super().setup()
                 self.connection.settimeout(2)
 
-        self._server = HTTPServer(("127.0.0.1", port), Handler)
+        self._server = LocalServer(("127.0.0.1", port), Handler)
         self._thread = Thread(target=self._server.serve_forever, daemon=True)
 
     @property
@@ -60,6 +103,7 @@ class EventServer:
         self._thread.start()
 
     def close(self) -> None:
+        self._server.interrupt_client()
         if self._thread.is_alive():
             self._server.shutdown()
             self._thread.join(timeout=3)
