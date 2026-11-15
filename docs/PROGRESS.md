@@ -25,7 +25,7 @@ pin evaluation and workflow deduplication. No ORBIT/wake-word/hooks/persistence/
 
 ## Cloud validation (2026-11-15)
 
-- 155 tests passed, 3 Windows-only checks skipped; no disabled/expected-failure/failed tests.
+- 157 tests passed, 3 Windows-only checks skipped; no disabled/expected-failure/failed tests.
   Original test intent remains, with wire mocks injected at the shared transport boundary.
 - Real loopback TLS tests cover certificate trust, blocked headers, slow-drip deadline,
   response timeout, socket-worker cancellation/reaping, next-request recovery and controller
@@ -43,23 +43,33 @@ pin evaluation and workflow deduplication. No ORBIT/wake-word/hooks/persistence/
 
 ## CI / Windows evidence
 
-Application commit 4134dfe passed Linux CI:
-https://github.com/AsherFerdinand/JARVIS/actions/runs/43758145286
-and Windows tests, baseline/current packaging, executable smokes, checksum and resource checks:
-https://github.com/AsherFerdinand/JARVIS/actions/runs/43758145275 (1m23s).
-JARVIS-0.3.0-windows is listed on that run. Sanitized public notices expose exact metrics without
-confusing the Actions wrapper with the application ZIP. ZIP 10,043,980 bytes; extracted 22,619,590.
-Same-runner v0.2: ZIP 9,641,975 / extracted 22,094,697 bytes (+4.17% / +2.38% respectively).
+Application commit 27fdb80 passed Linux CI (157 passed, 3 skipped):
+https://github.com/AsherFerdinand/JARVIS/actions/runs/43759843995
+and Windows CI (160 passed, zero failures/errors/skips):
+https://github.com/AsherFerdinand/JARVIS/actions/runs/43759843983 (1m21s).
+Windows also rebuilt v0.2, verified current executable backend/worker/mock/health smokes,
+checksums and resources, and uploaded JARVIS-0.3.0-windows. Final run has three sanitized metric/
+test notices and no Node.js deprecation warning; all three action pins declare Node.js 24.
 
-Hosted Windows five-second mock-idle sample: working set 27,922,432 bytes, private 19,755,008,
-no measured CPU-time increase, readiness 152.294 ms, clean natural exit code 0. See PERFORMANCE.md
-for exact method, OS/image, timing limits and why this does not establish laptop targets.
+Exact current ZIP/extracted bytes: 10,045,150 / 22,620,450. Same-runner v0.2: 9,641,990 /
+22,094,697 (+403,160 / +525,753 bytes, about +4.18% / +2.38%). JSON metrics and baseline/resource
+reports are included in the uploaded artifact. Do not confuse the Actions wrapper with the ZIP.
 
-That first run still warned about upload-artifact v5 using Node.js 20. Its verified Node.js 24 v6
-replacement and separate internal backend-init timing are being revalidated on the final branch.
-REST/GraphQL API access was previously Forbidden; public Actions HTML is a working status/notice
-fallback. PR attempt/result and final checked SHA are recorded at task handoff. No merge or cloud
-configuration publication has been performed.
+Windows Server 2022 image 20261112.366.7, 5.0004-second mock-idle sample: working set 27,770,880
+bytes, private 19,890,176; no measured CPU-time increase; readiness 152.001 ms; backend init
+34.836 ms excluding process startup; clean natural exit code 0. PERFORMANCE.md records method,
+limits and the distinction from representative laptop/hardware acceptance targets.
+
+Intermediate Windows runs c364127/c6ce20b exposed a two-second incomplete-header shutdown delay.
+A sanitized JUnit reporter isolated the unchanged 1.5-second shutdown regression assertion. A
+cancellable, 64-KiB/two-second total header reader fixed the Windows timed-read behavior; neither
+the assertion nor security checks were relaxed. Added total-header-deadline coverage, and final
+Windows/Linux suites pass. Original run 4134dfe was also successful, before exposing this race.
+
+REST/GraphQL API access is Forbidden; public Actions HTML provided verified statuses, test counts
+and metric notices. Automatic PR creation returned GraphQL Forbidden. Use the stacked compare link:
+https://github.com/AsherFerdinand/JARVIS/compare/feat/jarvis-v0.2-voice-ai...feat/jarvis-v0.3-reliability?expand=1
+The final handoff commit updates evidence/documentation only; application CI SHA stays 27fdb80. No merge, local Windows test request or cloud configuration publication occurred.
 
 ## Remaining limitations / risks
 
@@ -79,6 +89,6 @@ configuration publication has been performed.
 
 ## Next milestone
 
-Finalize current CI evidence, then scope v0.4 around measured compatibility/provider/device gaps.
+Current CI evidence is recorded; scope v0.4 around measured compatibility/provider/device gaps.
 Do not add deferred capabilities implicitly. Retain a separate future representative Windows
 hardware checkpoint; cloud/TLS/fake devices/shared runners do not prove laptop hardware readiness.

@@ -63,8 +63,9 @@
 - Capture uses finished callbacks plus 50-ms activity checks only while activated. Stream failure
   releases context managers; the next session opens a fresh device/default selection. Input/output
   chunks use memoryviews to avoid extra full-chunk copies. No silent continuous-recording fallback.
-- Event server closes an active client socket before shutdown so partial/slow headers cannot
-  hold shutdown open. Auth, paths, ordering and legacy field filtering remain unchanged.
+- Event server interrupts active sockets and uses cancellable header reads (50-ms I/O intervals,
+  two-second total and 64-KiB cap). Windows CI exposed that shutdown alone could leave its timed
+  header read waiting two seconds; the new reader fixes this without weakening the test. Auth, paths, ordering and legacy field filtering remain unchanged.
 - Health output reports presence/status, not credentials, endpoint/model/device names or content.
   Native backend probing is explicit; a package being installed is not proof it loads or has devices.
 - CI uses immutable Node.js 24 action releases (checkout 6/setup-python 6/upload-artifact 6),

@@ -58,5 +58,6 @@ Health checks report credential/configuration presence, not verified API authent
 names and endpoints are hidden (default/explicit selection only). Optional native backend loading
 opens no audio stream; it still depends on the host's installed driver/library implementation.
 Cancelled voice turns never commit history; cleared history cannot be restored by late completion.
-Event shutdown interrupts partial client requests. Unsigned build and same-account malware risks
+Event shutdown interrupts partial client requests; bounded header reads also prevent a slow
+local client from extending the header phase indefinitely. Unsigned build and same-account malware risks
 remain; no local hardware, live credential request, persistence, hooks or new capabilities added.

@@ -66,33 +66,36 @@ Spawn/IPC probes took 92.85–106.17 ms; final helper RSS 18,759,680 bytes, CPU 
 network/audio payload. Actual HTTP work adds buffers/TLS/latency; one helper is allowed at a time.
 POSIX CPython can retain one resource-tracker helper after spawn; no request child stays alive.
 
-### First Windows v0.3 result (application SHA 4134dfe)
+### Verified Windows v0.3 result (application SHA 27fdb80)
 
-Run: https://github.com/AsherFerdinand/JARVIS/actions/runs/43758145275
-Windows Server 2022 10.0.20348, hosted image 20261112.366.7, one finite mock-idle sample:
+Run: https://github.com/AsherFerdinand/JARVIS/actions/runs/43759843983
+Windows Server 2022 10.0.20348, hosted image 20261112.366.7; all 160 tests passed. One finite
+mock-idle executable sample, with native backend initialization measured separately:
 
 | Measurement | Result |
 | --- | --- |
-| Executable readiness | 152.2935 ms (50-ms observation granularity) |
-| Sample interval | 5.000632 seconds |
+| Executable readiness | 152.001 ms (50-ms observation granularity) |
+| Sample interval | 5.000401 seconds |
 | Process CPU increase | 0.0% measured, one-core and host normalized |
-| Working set, before/after | 27,922,432 bytes |
-| Private bytes, before/after | 19,755,008 bytes |
-| Natural exit | code 0, 3,013.676 ms remaining wait after sampling |
-| Separate audio-backend process | 196.186 ms, includes executable startup |
-| v0.3 ZIP / extracted | 10,043,980 / 22,619,590 bytes |
-| Same-runner v0.2 ZIP / extracted | 9,641,975 / 22,094,697 bytes |
-| Change | +402,005 ZIP bytes (4.17%); +524,893 extracted bytes (2.38%) |
+| Working set, before/after | 27,770,880 bytes |
+| Private bytes, before/after | 19,890,176 bytes |
+| Natural exit | code 0; 2,996.038 ms remaining wait after sampling |
+| Native audio-backend initialization | 34.836 ms, excluding process startup |
+| Separate audio-backend process | 169.790 ms, including executable startup |
+| v0.3 ZIP / extracted | 10,045,150 / 22,620,450 bytes |
+| Same-runner v0.2 ZIP / extracted | 9,641,990 / 22,094,697 bytes |
+| Change | +403,160 ZIP bytes (4.18%); +525,753 extracted bytes (2.38%) |
 
 The added transport/process/diagnostic code and required standard-library modules are a modest,
 explicit size cost; no new mandatory package, model or dataset was added. Baseline and current
-use their own locked source in the same runner. Distinct dependency/toolchain changes must not be
-silently treated as equivalent baselines in later comparisons. Artifacts contain exact JSON metrics.
+use their own locked source in the same runner. Baseline ZIP compression/timestamps may vary
+slightly across runs; the extracted baseline was unchanged. Distinct dependency/toolchain changes
+must not be silently treated as equivalent baselines later. Artifacts contain exact JSON metrics.
 
 CPU uses GetProcessTimes deltas (no measurable increase at its accounting resolution); memory uses
 GetProcessMemoryInfo. Readiness is observed after startup with a bounded loop; this is not a
 cold-cache guarantee. Natural exit wait includes the remainder of the eight-second probe and is
 NOT a three-second shutdown latency. Shared runner load and a five-second sample cannot establish
-representative Windows laptop targets. No live devices, paid providers or Windows GUI action was
-measured. Later CI adds separately timed native backend initialization and maintained action pins;
-see PROGRESS.md for the final verified SHA/result, and retain the hardware checkpoint requirement.
+representative Windows laptop targets. No live devices, paid providers or Windows GUI actions
+were measured. Native init opens no stream; it does not establish an audible speaker or working
+microphone. Preserve the separately scoped hardware checkpoint requirement.

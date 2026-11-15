@@ -132,3 +132,7 @@ load the optional native audio backend without streams, use `--health --check-au
 `--check-provider-worker` verifies spawn/IPC without contacting any provider. Finite `--mock
 --idle-probe 8` is for automated resource sampling, not a background service. No user-side Windows
 installation/testing is requested for this milestone.
+
+CI recovery checks now also publish only sanitized failing test identifiers/types, known error
+codes and literal numeric comparisons, never assertion text or captured content. Final Windows
+validation passed all 160 tests; see PROGRESS.md for exact tested SHA and artifact links.

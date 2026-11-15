@@ -65,7 +65,9 @@ release/cancel events are ignored, wait snapshots its result, and close prevents
 Capture completion/inactivity and output errors have sanitized codes. Devices are context-managed
 per use, not cached. A failed normal session can activate again; a closed controller cannot. An
 uncooperative driver/custom adapter may require process restart after bounded shutdown; no attempt
-is made to kill a Python thread unsafely. Loopback server shutdown interrupts an active client.
+is made to kill a Python thread unsafely. Loopback server shutdown interrupts an active client. Header reads use short cancellable I/O
+with a two-second total/64-KiB bound, independent of cross-thread Winsock wakeup behavior; normal
+responses retain the two-second socket timeout.
 
 `--health` and `/diagnostics` expose inexpensive configuration/resource snapshots; explicit audio
 probe can be added to --health. The existing voice event error_info carries sanitized codes; no
