@@ -22,3 +22,14 @@ Workflow validation uses actionlint 1.7.7. Third-party action revisions were che
 `--diagnostics` reports token/event counts; `--log-file PATH` enables bounded fixed-message logging.
 No log file is written by default. Provider timeout can use JARVIS_AI_TIMEOUT (0–120 seconds,
 exclusive lower bound); this is a socket timeout, not a guaranteed total wall-clock deadline.
+
+## v0.2
+
+See VOICE.md for cloud/device settings and the in-app press/release alternative. Baseline tests
+need no devices, credentials, audio extra or native libraries. `uv run jarvis --mock-voice
+'Open YouTube.' --diagnostics` validates the synthetic pipeline. `uv run python
+scripts/benchmark_voice.py` reports mock timings, bounded audio allocation and optional import
+memory; use `uv run --extra audio` plus native PortAudio to measure the actual audio import.
+Linux uses system PortAudio; Windows wheels bundle it. Tests do not make paid API requests.
+Windows CI installs `--extra audio --group packaging`, tests native import without streams,
+then verifies the frozen backend, mock voice, DLL, ZIP contents and SHA256 manifest.

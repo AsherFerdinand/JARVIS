@@ -5,19 +5,26 @@ import csv
 import hashlib
 import io
 import tarfile
+import tomllib
 import zipfile
 from pathlib import Path
 
 
 def main() -> None:
-    dist = Path(__file__).resolve().parents[1] / "dist"
-    with zipfile.ZipFile(dist / "jarvis_assistant-0.1.0-py3-none-any.whl") as wheel:
+    root = Path(__file__).resolve().parents[1]
+    version = tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"]
+    dist = root / "dist"
+    with zipfile.ZipFile(dist / f"jarvis_assistant-{version}-py3-none-any.whl") as wheel:
         if wheel.testzip() is not None:
             raise ValueError("Corrupt wheel")
-        metadata = wheel.read("jarvis_assistant-0.1.0.dist-info/METADATA").decode()
-        if "Requires-Dist:" in metadata:
-            raise ValueError("Unexpected runtime dependency")
-        record_name = "jarvis_assistant-0.1.0.dist-info/RECORD"
+        metadata = wheel.read(f"jarvis_assistant-{version}.dist-info/METADATA").decode()
+        requirements = [line for line in metadata.splitlines() if line.startswith("Requires-Dist:")]
+        if any(
+            "sounddevice==0.5.3" not in line or "extra == 'audio'" not in line
+            for line in requirements
+        ):
+            raise ValueError("Unexpected mandatory runtime dependency")
+        record_name = f"jarvis_assistant-{version}.dist-info/RECORD"
         rows = list(csv.reader(io.StringIO(wheel.read(record_name).decode())))
         if {row[0] for row in rows} != set(wheel.namelist()):
             raise ValueError("Incomplete wheel RECORD")
@@ -30,7 +37,7 @@ def main() -> None:
             )
             if checksum != f"sha256={digest}" or int(size) != len(payload):
                 raise ValueError(f"Invalid wheel entry: {name}")
-    with tarfile.open(dist / "jarvis_assistant-0.1.0.tar.gz") as source:
+    with tarfile.open(dist / f"jarvis_assistant-{version}.tar.gz") as source:
         names = source.getnames()
         if any(
             part.startswith((".cache", ".venv", ".env"))
@@ -40,7 +47,7 @@ def main() -> None:
             raise ValueError("Local configuration leaked into sdist")
         if not any(name.endswith("src/jarvis/main.py") for name in names):
             raise ValueError("Application missing from sdist")
-    print("Wheel RECORD, zero runtime dependencies, and source distribution verified")
+    print("Wheel RECORD, zero mandatory runtime dependencies, and source distribution verified")
 
 
 if __name__ == "__main__":

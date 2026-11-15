@@ -31,3 +31,17 @@ Windows CI versus simulated versus real hardware evidence stated separately.
 Update PROGRESS (results, remaining tasks, risks, next milestone), ROADMAP and DECISIONS
 when behavior or architecture changes. Do not claim unrun checks or automatic continuation.
 For unfinished work record the exact blocker and next command. Finish with a concise handoff.
+
+## v0.2 continuation
+
+Read docs/VOICE.md for explicit voice activation/configuration. Core startup must never import
+sounddevice, open audio, start voice threads or upload files automatically. Audio extra only:
+`uv sync --locked --extra audio`; native PortAudio also needed on Linux. Windows package builds
+must include the extra. `uv run jarvis --mock-voice 'Open YouTube.' --diagnostics` and
+`uv run python scripts/benchmark_voice.py` are cloud-safe smokes. Mock audio is synthetic.
+All prior lint/type/build commands remain required. Never claim mock audio proves live devices.
+Keep one activation worker until cancelled network work drains. Treat AI conversation as plain
+text, retain history in memory only, and preserve exact legacy `/v1/events` shape. New voice
+fields/types live on `/v1/voice-events`; recognized text sharing defaults off. No wake word,
+global keyboard hooks, or ORBIT changes in this milestone. Do not request local Windows tests
+for v0.2; record Windows CI, ZIP and hardware evidence separately.

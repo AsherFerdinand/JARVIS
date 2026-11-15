@@ -6,14 +6,32 @@ import os
 import shutil
 import subprocess
 import sys
+import tomllib
 import zipfile
 from pathlib import Path
+
+
+def verify_archive(archive: Path) -> None:
+    with zipfile.ZipFile(archive) as packaged:
+        if packaged.testzip() is not None or "JARVIS/JARVIS.exe" not in packaged.namelist():
+            raise ValueError("Invalid portable artifact")
+        records = packaged.read("JARVIS/SHA256SUMS").decode().splitlines()
+        expected = set()
+        for record in records:
+            digest, name = record.split("  ", 1)
+            member = f"JARVIS/{name}"
+            if member in expected or hashlib.sha256(packaged.read(member)).hexdigest() != digest:
+                raise ValueError("Portable checksum mismatch")
+            expected.add(member)
+        if expected | {"JARVIS/SHA256SUMS"} != set(packaged.namelist()):
+            raise ValueError("Portable manifest is incomplete")
 
 
 def main() -> None:
     if os.name != "nt":
         raise SystemExit("Windows packaging requires Windows")
     root = Path(__file__).resolve().parents[1]
+    version = tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"]
     subprocess.run(
         [
             sys.executable,
@@ -22,6 +40,8 @@ def main() -> None:
             "--noconfirm",
             "--clean",
             "--onedir",
+            "--hidden-import",
+            "sounddevice",
             "--name",
             "JARVIS",
             str(root / "src/jarvis/main.py"),
@@ -35,8 +55,21 @@ def main() -> None:
         [str(bundle / "JARVIS.exe"), "--mock", "--command", "status"], check=True, timeout=30
     )
     subprocess.run([str(bundle / "JARVIS.exe"), "--command", "system info"], check=True, timeout=30)
+    mock = subprocess.run(
+        [str(bundle / "JARVIS.exe"), "--mock-voice", "Open YouTube.", "--diagnostics"],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    if "Website opened (mock)" not in mock.stdout or '"state": "completed"' not in mock.stdout:
+        raise RuntimeError("Packaged voice smoke failed")
+    subprocess.run([str(bundle / "JARVIS.exe"), "--check-audio-backend"], check=True, timeout=30)
+    portaudio = list(bundle.rglob("libportaudio*.dll"))
+    if not portaudio:
+        raise RuntimeError("Required Windows PortAudio runtime missing")
     shutil.copy(root / "docs/RELEASES.md", bundle / "QUICKSTART.md")
-    (bundle / "VERSION").write_text("0.1.0\n")
+    (bundle / "VERSION").write_text(f"{version}\n")
     (bundle / "default-config.json").write_text(
         json.dumps(
             {
@@ -53,18 +86,26 @@ def main() -> None:
             for p in files
         )
     )
-    archive = root / "dist/JARVIS-0.1.0-windows.zip"
+    archive = root / f"dist/JARVIS-{version}-windows.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as output:
         for path in sorted(bundle.rglob("*")):
             if path.is_file():
                 output.write(path, path.relative_to(bundle.parent))
-    with zipfile.ZipFile(archive) as packaged:
-        if packaged.testzip() is not None or "JARVIS/JARVIS.exe" not in packaged.namelist():
-            raise RuntimeError("Invalid portable artifact")
+    verify_archive(archive)
     extracted_bytes = sum(p.stat().st_size for p in bundle.rglob("*") if p.is_file())
     print(f"Extracted bytes: {extracted_bytes}")
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     archive.with_suffix(".zip.sha256").write_text(f"{digest}  {archive.name}\n")
+    baseline = os.getenv("JARVIS_BASELINE_ZIP_BYTES")
+    previous = int(baseline) if baseline is not None else None
+    metrics = {
+        "version": version,
+        "zip_bytes": archive.stat().st_size,
+        "extracted_bytes": extracted_bytes,
+        "baseline_zip_bytes": previous,
+        "delta_zip_bytes": archive.stat().st_size - previous if previous is not None else None,
+    }
+    (root / "dist/artifact-metrics.json").write_text(json.dumps(metrics, indent=2))
     print(f"ZIP bytes: {archive.stat().st_size}; SHA256: {digest}")
 
 

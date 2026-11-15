@@ -20,5 +20,6 @@ jobs:
       - run: uv run pytest -v
       - run: uv build
       - run: uv run python scripts/check_package.py
-      - run: uv run --group packaging pip-audit --progress-spinner off
+      - run: uv run --extra audio --group packaging pip-audit --progress-spinner off
       - run: uv run python scripts/benchmark.py
+      - run: uv run python scripts/benchmark_voice.py

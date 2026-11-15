@@ -25,3 +25,23 @@ clients can still deny service. FastAPI/WebSockets are deferred until measured d
 Speech protocols describe replaceable STT/TTS/wake-word/microphone/output boundaries only.
 No model selection or implementation is made. Future Ollama support can implement Provider;
 no local model or provider daemon is started now.
+
+## v0.2 voice extension
+
+The speech pipeline now has cancellable Capture/Transcriber/Synthesizer/Playback ports in
+speech/ports.py; byte-only v0.1 interfaces remain import-compatible. VoiceController owns one
+optional activation worker and an explicit SessionState. Its in-app PushToTalkAdapter exposes
+press/release/cancel; no global hotkey implementation is installed. Sounddevice raw PCM streams
+are loaded lazily and context-managed, with bounded in-memory WAV buffers. Cloud audio transport
+uses standard-library HTTPS; no SDK/model loads at startup.
+
+Deterministic recognized commands reuse Assistant/registry/executor. Unknown requests use a
+bounded Conversation that returns text only, not tools. The optional legacy intent provider
+remains available to programmatic v0.1 consumers. Text CLI now uses conversational fallback.
+Cancellation discards late remote results and serializes action commits; it cannot undo an
+already committed OS action or forcibly interrupt an active urllib socket request.
+
+The extended `/v1/voice-events` view exposes session IDs and additive voice types. `/v1/events`
+filters new types/fields for exact legacy compatibility. Both use the same loopback authentication.
+Recognized text sharing is off by default. See VOICE.md for configuration, bounds and transitions.
+The earlier interfaces-only statement describes v0.1; cloud/mock/device adapters now exist.

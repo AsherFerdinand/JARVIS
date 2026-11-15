@@ -31,3 +31,10 @@ def test_windows_allowlist_and_launch(monkeypatch):
     assert executor.application_status("notepad") == "notepad: running"
     executor.close()
     child.terminate.assert_not_called()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows native audio runtime compatibility")
+def test_windows_audio_extra_loads_without_streams():
+    from jarvis.speech.audio_devices import audio_backend
+
+    assert audio_backend().__version__ == "0.5.3"

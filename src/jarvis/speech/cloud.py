@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urlparse
 from urllib.request import Request
 
@@ -14,7 +14,7 @@ from jarvis.speech.audio import MAX_AUDIO_BYTES, decode_wav
 @dataclass(frozen=True)
 class Endpoint:
     url: str
-    key: str
+    key: str = field(repr=False)
     model: str
     timeout: float = 15
 

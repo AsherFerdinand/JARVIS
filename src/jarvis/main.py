@@ -13,7 +13,7 @@ from jarvis.integration.server import EventServer
 from jarvis.intelligence.conversation import CloudConversation, Conversation
 from jarvis.intelligence.provider import ProviderError
 from jarvis.speech.audio import AudioError
-from jarvis.speech.audio_devices import list_devices
+from jarvis.speech.audio_devices import audio_backend, list_devices
 from jarvis.speech.session import State
 from jarvis.speech.setup import endpoint_from_environment, make_voice
 
@@ -37,6 +37,9 @@ def main() -> int:
     parser.add_argument("--voice-trigger", default="/voice", help="In-app activation command")
     parser.add_argument("--no-speak", action="store_true", help="Disable speech output")
     parser.add_argument("--list-audio-devices", action="store_true")
+    parser.add_argument(
+        "--check-audio-backend", action="store_true", help="Load audio without streams"
+    )
     args = parser.parse_args()
     server = None
     assistant = None
@@ -44,6 +47,10 @@ def main() -> int:
     try:
         logger = configure(args.log_file)
         logger.info("Assistant starting")
+        if args.check_audio_backend:
+            audio_backend()
+            print("Audio backend available; no stream opened")
+            return 0
         if args.list_audio_devices:
             print(list_devices())
             return 0

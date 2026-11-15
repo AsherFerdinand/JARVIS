@@ -20,3 +20,22 @@ Future persistent credentials should use Windows Credential Manager; v0.1 persis
 
 CI uses read-only repository permissions and commit-pinned actions. Dependency audit runs in CI.
 Unsigned development ZIPs are not a trusted distribution channel; signing remains future work.
+
+## v0.2 explicit audio processing
+
+The earlier no-microphone statement describes defaults: `--voice` plus an in-app activation
+is now required for live capture. `--voice-file` is explicit consent to upload that selected WAV.
+Configuring credentials alone never starts capture or sends audio. Mock voice never sends data.
+Recorded audio and synthesized WAVs remain in bounded memory; no temporary audio files are made.
+STT uploads the recording to JARVIS_STT_URL; TTS uploads response text to JARVIS_TTS_URL;
+unknown conversational requests/history go to JARVIS_AI_URL. Keys are independent bearer settings,
+never source-controlled, logged, included in events, or embedded in URL credentials. Redirects
+are denied; HTTPS verification stays enabled. Cloud account retention policies apply.
+
+Transcript and conversation text are transient process memory. ORBIT transcript sharing defaults
+Off and requires JARVIS_SHARE_TRANSCRIPT=1 on the authenticated extended channel. Event failures
+contain generic error codes, never exception/provider bodies. Fixed-message logs remain opt-in.
+Late cancelled responses are discarded; no new worker can overlap one draining a socket. Side
+effects committed before cancellation are not reversible. No new sensitive actions or confirmation
+bypass was added. Exact STT errors can still misrecognize a safe allowlisted command; no destructive
+commands exist. Global keyboard hooks and wake-word capture remain absent.
