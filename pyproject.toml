@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jarvis-assistant"
+version = "0.1.0"
+description = "Lightweight Windows assistant with explicit action boundaries"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+jarvis = "jarvis.main:main"
+
+[dependency-groups]
+dev = ["pytest==9.0.3", "ruff==0.11.13", "mypy==1.15.0", "build==1.2.2.post1", "pip-audit==2.9.0"]
+packaging = ["pyinstaller==6.16.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jarvis"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "S603", "S310"]
+
+# Packaging invokes only the current interpreter and freshly built executable.
+"scripts/package_windows.py" = ["S603"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
