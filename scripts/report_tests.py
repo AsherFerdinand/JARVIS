@@ -36,7 +36,8 @@ def report(path: Path) -> dict[str, object]:
             )
         )
         # Numeric comparisons help diagnose timing assertions, without publishing assertion strings.
-        numbers = re.findall(r"(?<![a-zA-Z])\b\d+(?:\.\d+)?\b", message)[:8]
+        comparisons = re.findall(r"assert\s+([0-9.]+)\s*(?:<=|>=|<|>|==)\s*([0-9.]+)", message)
+        numbers = [number for pair in comparisons[:4] for number in pair]
         failures.append(
             {
                 "test": identity,

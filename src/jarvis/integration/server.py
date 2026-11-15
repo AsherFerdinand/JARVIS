@@ -1,15 +1,58 @@
 """Optional read-only authenticated HTTP snapshot channel for ORBIT."""
 
 import hmac
+import io
 import json
 import logging
 import socket
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Event as ThreadEvent
 from threading import Lock, Thread
 
 from jarvis.core.event_bus import EventBus
 from jarvis.integration.protocol import LEGACY_EVENT_TYPES
+
+
+class HeaderReader(io.BufferedIOBase):
+    """Bounded GET headers, independent of cross-thread Winsock shutdown wakeups."""
+
+    def __init__(
+        self, connection: socket.socket, closing: ThreadEvent, deadline_seconds: float = 2
+    ) -> None:
+        super().__init__()
+        self.connection, self.closing = connection, closing
+        self.deadline = time.monotonic() + deadline_seconds
+        self.buffer = bytearray()
+        self.received = 0
+
+    def readline(self, size: int = -1) -> bytes:
+        if size == 0:
+            return b""
+        limit = 65537 if size < 0 else min(size, 65537)
+        while True:
+            if self.closing.is_set():
+                return b""
+            if time.monotonic() >= self.deadline:
+                raise TimeoutError("Header deadline exceeded")
+            end = self.buffer.find(b"\n")
+            if end >= 0 or len(self.buffer) >= limit:
+                length = min(end + 1, limit) if end >= 0 else limit
+                result = bytes(self.buffer[:length])
+                del self.buffer[:length]
+                return result
+            try:
+                chunk = self.connection.recv(4096)
+            except TimeoutError:
+                continue
+            if not chunk:
+                result = bytes(self.buffer)
+                self.buffer.clear()
+                return result
+            self.received += len(chunk)
+            if self.received > 65536:
+                raise ValueError("Header size exceeded")
+            self.buffer.extend(chunk)
 
 
 class LocalServer(HTTPServer):
@@ -57,6 +100,8 @@ class EventServer:
         if len(token) < 32 or not token.isascii() or any(c.isspace() for c in token):
             raise ValueError("Use a random ASCII token of at least 32 characters")
 
+        server_closing = ThreadEvent()
+
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
                 supplied = self.headers.get("Authorization", "")
@@ -90,9 +135,12 @@ class EventServer:
 
             def setup(self) -> None:
                 super().setup()
-                self.connection.settimeout(2)
+                self.connection.settimeout(0.05)
+                self.rfile.close()
+                self.rfile = HeaderReader(self.connection, server_closing)
 
         self._server = LocalServer(("127.0.0.1", port), Handler)
+        self._server._closing = server_closing
         self._thread = Thread(target=self._server.serve_forever, daemon=True)
 
     @property

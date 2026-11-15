@@ -161,3 +161,20 @@ def test_event_server_shutdown_interrupts_incomplete_headers():
         server.close()
         assert time.monotonic() - started < 1.5
     assert not server._thread.is_alive()
+
+
+def test_partial_headers_have_total_deadline():
+    import socket
+
+    from jarvis.integration.server import HeaderReader
+
+    left, right = socket.socketpair()
+    try:
+        left.settimeout(0.02)
+        right.sendall(b"incomplete")
+        reader = HeaderReader(left, threading.Event(), deadline_seconds=0.05)
+        with pytest.raises(TimeoutError):
+            reader.readline()
+    finally:
+        left.close()
+        right.close()
