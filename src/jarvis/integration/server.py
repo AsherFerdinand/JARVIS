@@ -26,7 +26,11 @@ class HeaderReader(io.BufferedIOBase):
         self.buffer = bytearray()
         self.received = 0
 
-    def readline(self, size: int = -1) -> bytes:
+    def readline(self, size: int | None = -1) -> bytes:
+        if self.closed:
+            raise ValueError("Reader closed")
+        if size is None:
+            size = -1
         if size == 0:
             return b""
         limit = 65537 if size < 0 else min(size, 65537)
@@ -56,9 +60,14 @@ class HeaderReader(io.BufferedIOBase):
 
 
 class LocalServer(HTTPServer):
-    def __init__(self, address: tuple[str, int], handler: type[BaseHTTPRequestHandler]) -> None:
+    def __init__(
+        self,
+        address: tuple[str, int],
+        handler: type[BaseHTTPRequestHandler],
+        closing: ThreadEvent | None = None,
+    ) -> None:
         self._connection_lock = Lock()
-        self._closing = ThreadEvent()
+        self._closing = closing if closing is not None else ThreadEvent()
         self._active: socket.socket | None = None
         super().__init__(address, handler)
 
@@ -104,6 +113,9 @@ class EventServer:
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self) -> None:
+                if server_closing.is_set():
+                    return
+                self.connection.settimeout(2)
                 supplied = self.headers.get("Authorization", "")
                 if not hmac.compare_digest(supplied.encode(), f"Bearer {token}".encode()):
                     self.send_error(401)
@@ -139,8 +151,7 @@ class EventServer:
                 self.rfile.close()
                 self.rfile = HeaderReader(self.connection, server_closing)
 
-        self._server = LocalServer(("127.0.0.1", port), Handler)
-        self._server._closing = server_closing
+        self._server = LocalServer(("127.0.0.1", port), Handler, server_closing)
         self._thread = Thread(target=self._server.serve_forever, daemon=True)
 
     @property
