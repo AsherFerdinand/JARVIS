@@ -144,16 +144,22 @@ def preflight(settings: Mapping[str, str] | None = None) -> PreflightReport:
             "none",
         }:
             errors.append("unsupported_chat_instruction_role")
+        unused = {"AI": ("LANGUAGE_HINT", "SPEED"), "STT": ("SPEED",), "TTS": ("LANGUAGE_HINT",)}
+        if any(settings.get(f"{prefix}_{option}") is not None for option in unused[role]):
+            errors.append("unsupported_optional_capability")
         warnings.append("model_and_endpoint_not_live_verified")
         providers[role] = {
             "configured": configured,
             "valid": not errors,
             "errors": sorted(set(errors)),
             "warnings": warnings,
-            "capabilities": {
-                "language_hint": caps.language_hint,
-                "speaking_rate": caps.speaking_rate,
-            },
+            "capabilities": (
+                {"language_hint": caps.language_hint}
+                if role == "STT"
+                else {"speaking_rate": caps.speaking_rate, "wav_pcm16": True}
+                if role == "TTS"
+                else {"chat_completions": True, "tool_execution": False}
+            ),
         }
         if configured:
             all_errors.extend(errors)

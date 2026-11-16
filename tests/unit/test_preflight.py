@@ -94,3 +94,12 @@ def test_preflight_cli_no_backend_import():
     )
     assert result.returncode == 0
     assert json.loads(result.stdout)["network_requests"] == 0
+
+
+def test_role_capabilities_do_not_claim_unimplemented_optional_fields():
+    report = preflight({"JARVIS_TTS_LANGUAGE_HINT": "1"})
+    assert "unsupported_optional_capability" in report["providers"]["TTS"]["errors"]
+    assert report["providers"]["AI"]["capabilities"] == {
+        "chat_completions": True,
+        "tool_execution": False,
+    }
