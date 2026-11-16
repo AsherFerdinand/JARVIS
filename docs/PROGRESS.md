@@ -26,7 +26,7 @@ removed; all documented environment settings are actually consumed.
 
 ## Cloud checks (2026-11-16)
 
-- 199 passed, 3 Windows-only skips; no failures, disabled or expected-failure tests. Original
+- 200 passed, 3 Windows-only skips; no failures, disabled or expected-failure tests. Original
   tests remain passing. New coverage includes offline configuration errors, real local TLS
   provider schemas/auth/rate/server/format/disconnection/cancellation/recovery, chat roles,
   sample-rate/channel conversion, switching/default/explicit device identity and start/stop close.
@@ -39,25 +39,31 @@ removed; all documented environment settings are actually consumed.
 
 ## CI / extracted Windows evidence
 
-Application commit 990e3f2 passed Linux CI (198 passed, 3 skips):
-https://github.com/AsherFerdinand/JARVIS/actions/runs/43870557125
-and Windows CI (201 passed, no skips/failures):
-https://github.com/AsherFerdinand/JARVIS/actions/runs/43870557107 (2m04s).
-It produced JARVIS-0.4.0-windows with verified manifest/checksum and all extracted smokes.
-Both complete local TLS provider paths ran in the actual extracted executable with no dev
-bindings, zero surviving request workers and no paid calls/audio streams. Native backend loaded;
-the runner enumerated zero audio devices, correctly reported missing input/output, and did not
-pretend to validate a physical device. Metrics/validation JSON are included with the ZIP.
+Application commit 16635ba passed Linux CI (200 passed, 3 Windows-only skips):
+https://github.com/AsherFerdinand/JARVIS/actions/runs/43872874709
+and Windows CI (203 passed, zero skips/failures/errors):
+https://github.com/AsherFerdinand/JARVIS/actions/runs/43872875094 (2m02s).
+The portable JARVIS-0.4.0-windows artifact contains ZIP/checksum and exact current/baseline/resource/
+portable-validation JSON. Full manifest/CRC/SHA256 checks and extracted executable smokes passed.
 
-That run measured ZIP 10,058,325 / extracted 22,634,267 bytes versus same-runner v0.3
-10,045,690 / 22,620,450 (+12,635 / +13,817 bytes). Working set 28,180,480, private 19,865,600,
-no measured CPU-time increase over five idle seconds, 329.929 ms readiness, 42.555 ms native
-backend init. Baseline and measurement limits are detailed in PERFORMANCE.md.
+The actual extracted executable ran STT/action/TTS and STT/chat/TTS through real local TLS handlers
+with system-only PATH and no dev Python/venv bindings. Both completed with zero surviving request
+workers, no paid calls and simulated devices. Backend/worker init, version/text/mock voice, health/
+offline preflight also passed. Native enumeration found zero devices and correctly reported missing
+default input/output with zero streams, rather than claiming a functioning microphone/speaker.
 
-Final documentation and additional fail-closed default-index/configuration guards are being
-revalidated on the final branch SHA. Public Actions HTML/notices supply verified results when
-GitHub REST/GraphQL is Forbidden. Final PR attempt/result is recorded at handoff. No merge,
-local laptop test request or cloud environment publication occurred.
+ZIP/extracted bytes: 10,060,538 / 22,636,271. Same-runner v0.3: 10,044,701 / 22,620,450,
++15,837 / +15,821 bytes (about +0.16% / +0.07%). Windows Server 2022 image 20261112.366.7,
+5.0006-second mock-idle sample: working set 28,086,272, private 19,955,712; no measured CPU-time
+increase; readiness 383.014 ms, native backend init 48.375 ms, clean natural exit code 0.
+Extracted HTTP pipeline peak working set about 32.2 MB and traced peak 4,018,346 bytes, with
+instrumentation. PERFORMANCE.md records v0.3 comparisons and limitations; no material size/RAM
+regression was observed in these samples, and no laptop acceptance target is claimed.
+
+Public Actions HTML/notices supplied verified statuses, counts and exact metrics. GitHub REST/
+GraphQL access is Forbidden; automatic PR creation returned GraphQL Forbidden. Stacked compare:
+https://github.com/AsherFerdinand/JARVIS/compare/feat/jarvis-v0.3-reliability...feat/jarvis-v0.4-compatibility?expand=1 Final evidence commit changes documentation only; tested application SHA is 16635ba.
+No merge, local laptop test request or cloud environment publication occurred.
 
 ## Remaining gaps / next milestone
 

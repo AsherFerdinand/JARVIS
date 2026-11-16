@@ -26,6 +26,7 @@ Two role-specific profiles are available through JARVIS_AI/STT/TTS_PROFILE:
 - `compatible` conservatively omits both optional fields; it still requires the declared bearer,
   multipart/chat and WAV contracts. A nondefault speaking rate is rejected unless explicitly enabled.
 
+Role reports show only implemented capabilities; options for the wrong role are rejected.
 JARVIS_STT_LANGUAGE_HINT=0/1 and JARVIS_TTS_SPEED=0/1 override those capabilities for a documented
 server. JARVIS_STT_RESPONSE_FORMAT is json (default) or text; JARVIS_TTS_FORMAT must be wav.
 JARVIS_AI_SCHEMA must be chat_completions. JARVIS_AI_SYSTEM_ROLE is system (default), developer,
