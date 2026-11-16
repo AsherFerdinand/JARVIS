@@ -134,6 +134,12 @@ def preflight(settings: Mapping[str, str] | None = None) -> PreflightReport:
             and settings.get("JARVIS_AI_SCHEMA", "chat_completions") != "chat_completions"
         ):
             errors.append("unsupported_chat_schema")
+        if role == "AI" and settings.get("JARVIS_AI_SYSTEM_ROLE", "system") not in {
+            "system",
+            "developer",
+            "none",
+        }:
+            errors.append("unsupported_chat_instruction_role")
         warnings.append("model_and_endpoint_not_live_verified")
         providers[role] = {
             "configured": configured,

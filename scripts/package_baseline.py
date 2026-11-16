@@ -5,7 +5,11 @@ import os
 import shutil
 import subprocess
 import tarfile
+import tempfile
+import zipfile
 from pathlib import Path
+
+from measure_windows import measure
 
 BASELINE = "07d7e56960d8df55122c451a2444542448a541ae"
 
@@ -48,6 +52,17 @@ def main() -> None:
     metrics["source_revision"] = BASELINE
     (root / "dist").mkdir(exist_ok=True)
     (root / "dist/baseline-artifact-metrics.json").write_text(json.dumps(metrics, indent=2))
+    with tempfile.TemporaryDirectory(prefix="jarvis-baseline-extracted-") as folder:
+        with zipfile.ZipFile(baseline / "dist/JARVIS-0.3.0-windows.zip") as package:
+            package.extractall(folder)  # noqa: S202 -- zipfile, own freshly built verified ZIP
+        resources = measure(Path(folder) / "JARVIS/JARVIS.exe")
+    resources["version"] = "0.3.0"
+    (root / "dist/baseline-windows-resources.json").write_text(json.dumps(resources, indent=2))
+    if os.getenv("GITHUB_ACTIONS") == "true":
+        print(
+            "::notice title=Baseline Windows resources::"
+            + json.dumps(resources).replace("%", "%25")
+        )
     print(json.dumps(metrics, indent=2))
 
 

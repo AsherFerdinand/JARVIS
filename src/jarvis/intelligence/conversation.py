@@ -28,11 +28,20 @@ class ChatProvider(Protocol):
 
 
 class CloudConversation:
-    def __init__(self, endpoint: Endpoint) -> None:
-        self.endpoint = endpoint
+    def __init__(self, endpoint: Endpoint, system_role: str = "system") -> None:
+        if system_role not in {"system", "developer", "none"}:
+            raise ValueError("Unsupported chat instruction role")
+        self.endpoint, self.system_role = endpoint, system_role
 
     def respond(self, messages: list[dict[str, str]], cancel: Cancellation) -> Reply:
-        payload = json.dumps({"model": self.endpoint.model, "messages": messages}).encode()
+        adapted = []
+        for message in messages:
+            if message["role"] == "system":
+                if self.system_role == "none":
+                    continue
+                message = {**message, "role": self.system_role}
+            adapted.append(message)
+        payload = json.dumps({"model": self.endpoint.model, "messages": adapted}).encode()
         raw = self.endpoint.post(payload, "application/json", cancel)
         try:
             body = json.loads(raw)

@@ -125,7 +125,10 @@ def main() -> int:
             os.getenv(name) for name in ("JARVIS_AI_URL", "JARVIS_AI_MODEL", "JARVIS_AI_KEY")
         ):
             conversation = Conversation(
-                CloudConversation(endpoint_from_environment("JARVIS_AI")),
+                CloudConversation(
+                    endpoint_from_environment("JARVIS_AI"),
+                    system_role=os.getenv("JARVIS_AI_SYSTEM_ROLE", "system"),
+                ),
                 language=os.getenv("JARVIS_VOICE_LANGUAGE", "en"),
             )
         executor = MockExecutor() if args.mock or args.mock_voice is not None else WindowsExecutor()

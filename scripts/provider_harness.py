@@ -94,6 +94,9 @@ class MockProviderServer:
                         if role == "AI":
                             require(values["messages"][-1]["role"] == "user")
                             require("tools" not in values)
+                            owner.fields.append(
+                                {"role": "AI", "instruction_role": values["messages"][0]["role"]}
+                            )
                             body = json.dumps(
                                 {
                                     "choices": [{"message": {"content": "Synthetic explanation."}}],

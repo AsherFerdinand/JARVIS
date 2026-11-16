@@ -115,3 +115,29 @@ def test_real_http_cli_pipeline_without_devices(tmp_path):
     assert report["paid_calls"] == 0
     assert all(case["state"] == "completed" for case in report["pipeline_cases"])
     assert report["audio_devices_opened"] == 0
+
+
+@pytest.mark.parametrize(
+    "instruction_role,expected", [("developer", "developer"), ("none", "user")]
+)
+def test_explicit_chat_instruction_role_uses_real_http(monkeypatch, instruction_role, expected):
+    with MockProviderServer("Explain a concept.") as server:
+        for key, value in server.settings().items():
+            monkeypatch.setenv(key, value)
+        from jarvis.intelligence.transport import Endpoint
+
+        chat = CloudConversation(
+            Endpoint(server.settings()["JARVIS_AI_URL"], "synthetic-test-key", "fixture-model"),
+            system_role=instruction_role,
+        )
+        from jarvis.core.cancellation import Cancellation
+
+        reply = chat.respond(
+            [
+                {"role": "system", "content": "synthetic instruction"},
+                {"role": "user", "content": "synthetic question"},
+            ],
+            Cancellation(),
+        )
+        assert reply.text == "Synthetic explanation."
+        assert server.fields == [{"role": "AI", "instruction_role": expected}]

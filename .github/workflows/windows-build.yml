@@ -40,6 +40,7 @@ jobs:
             dist/JARVIS-0.4.0-windows.zip.sha256
             dist/artifact-metrics.json
             dist/baseline-artifact-metrics.json
+            dist/baseline-windows-resources.json
             dist/windows-resources.json
             dist/portable-validation.json
           if-no-files-found: error
