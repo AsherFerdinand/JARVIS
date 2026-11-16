@@ -32,7 +32,7 @@ def validate(archive: Path) -> dict[str, object]:
         environment = isolated_environment()
         checks = []
         for args, expected in [
-            (["--version"], "0.4.0"),
+            (["--version"], "0.5.0"),
             (["--mock", "--command", "status"], "JARVIS ready"),
             (["--command", "system info"], "Windows"),
             (["--check-provider-worker"], "Provider worker available"),
@@ -77,9 +77,56 @@ def validate(archive: Path) -> dict[str, object]:
         audio = json.loads(devices.stdout)
         if audio["streams_opened"] != 0:
             raise RuntimeError("Device preflight opened a stream")
+        validation_stages = []
+        for stage, flags, expected_code in [
+            ("offline", [], 0),
+            ("backend", [], 0),
+            ("devices", [], 0),
+            ("microphone", [], 2),
+            ("speaker", [], 2),
+            ("stt", [], 2),
+            ("chat", [], 2),
+            ("tts", [], 2),
+            ("interaction", [], 2),
+            ("speaker", ["--mock-audio", "--allow-playback"], 0),
+            ("microphone", ["--mock-audio", "--allow-microphone"], 0),
+        ]:
+            result = subprocess.run(  # noqa: S603 -- own extracted executable
+                [str(executable), "--validate", stage, *flags],
+                cwd=directory,
+                env=environment,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode != expected_code:
+                raise RuntimeError("Extracted validation consent/stage check failed")
+            validation_stages.append(json.loads(result.stdout))
+        resource_probe = subprocess.run(  # noqa: S603 -- own extracted executable
+            [
+                str(executable),
+                "--validation-benchmark",
+                "--benchmark-seconds",
+                "1",
+                "--benchmark-scope",
+                "shared-ci",
+            ],
+            cwd=directory,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if resource_probe.returncode != 0:
+            raise RuntimeError("Extracted validation benchmark failed")
+        resource_report = json.loads(resource_probe.stdout)
+        if resource_report["network_requested"] or resource_report["microphone_activated"]:
+            raise RuntimeError("Benchmark unexpectedly activated external effects")
         pipeline = executable_pipeline(executable, directory)
         return {
             "extracted_checks": checks,
+            "validation_stages": validation_stages,
+            "validation_benchmark": resource_report,
             "mock_voice": voice,
             "audio_preflight": audio,
             "http_pipeline": pipeline,

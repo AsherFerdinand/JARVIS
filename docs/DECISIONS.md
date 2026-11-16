@@ -96,3 +96,13 @@
 - Portable smokes/resources run from fresh temporary ZIP extractions with no dev venv/Python path.
   v0.3 is rebuilt and sampled on the same runner. Removed the misleadingly named informational
   default-config.json; actual configuration remains backward-compatible environment settings.
+
+## v0.5 independent explicit validation
+
+Keep a small lazy CLI subsystem with separate consent for microphone, playback, HTTP and approved
+Windows actions. Reuse existing adapters, controller and process transport. Tests inject synthetic
+ports and actual local TLS handlers. A default non-speech STT probe accepts an empty transcript as
+a valid contract, without weakening production STT. Content-free PCM levels do not certify speech
+quality; playback completion does not prove audibility. No new dependencies or persistent workers.
+A finite optional child benchmark strips provider bindings and reports fresh-process startup,
+with cold-cache and representative-machine verification false. See VALIDATION.md for limits.

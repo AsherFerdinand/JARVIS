@@ -1,7 +1,7 @@
-# JARVIS v0.4 portable build and configuration reference
+# JARVIS v0.5 portable build and configuration reference
 
 No local Windows installation or testing is requested for this milestone. CI produces
-JARVIS-0.4.0-windows.zip and .zip.sha256 plus artifact/baseline/resource/portable-validation JSON.
+JARVIS-0.5.0-windows.zip and .zip.sha256 plus artifact/baseline/resource/portable-validation JSON.
 The ZIP contains its runtime, VERSION, QUICKSTART and a complete SHA256SUMS manifest. No local
 Python/development environment, model, test key/data or cache is required/bundled. Executables
 remain unsigned; download only from a trusted successful run and verify the accompanying hash.
@@ -45,3 +45,5 @@ PROGRESS.md/PERFORMANCE.md for exact tested SHA, run links, results and remainin
 
 Tags/manual releases reuse the same least-privilege job; no automatic merge, installer, signing
 or GitHub Release publication. A future scoped checkpoint must cover live provider/device behavior.
+
+Optional independent checks: see [controlled validation guide](VALIDATION.md). No live or device check runs at startup.

@@ -1,4 +1,4 @@
-"""Build the exact v0.3 source in an ignored archive directory on the same Windows runner."""
+"""Build the exact v0.4 source in an ignored archive directory on the same Windows runner."""
 
 import json
 import os
@@ -11,15 +11,15 @@ from pathlib import Path
 
 from measure_windows import measure
 
-BASELINE = "07d7e56960d8df55122c451a2444542448a541ae"
+BASELINE = "ff09385ec151327c81d154207b472b9cbc771d66"
 
 
 def main() -> None:
     if os.name != "nt":
         raise SystemExit("Windows baseline requires Windows")
     root = Path(__file__).resolve().parents[1]
-    archive = root / ".cache/v03-source.tar"
-    baseline = root / ".cache/baseline-v03"
+    archive = root / ".cache/v04-source.tar"
+    baseline = root / ".cache/baseline-v04"
     archive.parent.mkdir(parents=True, exist_ok=True)
     # Only generated files below .cache are replaced; no tracked checkout/worktree is changed.
     if baseline.exists():
@@ -53,10 +53,10 @@ def main() -> None:
     (root / "dist").mkdir(exist_ok=True)
     (root / "dist/baseline-artifact-metrics.json").write_text(json.dumps(metrics, indent=2))
     with tempfile.TemporaryDirectory(prefix="jarvis-baseline-extracted-") as folder:
-        with zipfile.ZipFile(baseline / "dist/JARVIS-0.3.0-windows.zip") as package:
+        with zipfile.ZipFile(baseline / "dist/JARVIS-0.4.0-windows.zip") as package:
             package.extractall(folder)  # noqa: S202 -- zipfile, own freshly built verified ZIP
         resources = measure(Path(folder) / "JARVIS/JARVIS.exe")
-    resources["version"] = "0.3.0"
+    resources["version"] = "0.4.0"
     (root / "dist/baseline-windows-resources.json").write_text(json.dumps(resources, indent=2))
     if os.getenv("GITHUB_ACTIONS") == "true":
         print(

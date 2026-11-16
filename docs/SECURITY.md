@@ -76,3 +76,13 @@ format/failure/cancellation without a paid service. Test-only keys/CA/audio/harn
 packages are not bundled into the runtime ZIP. No network/recording is triggered by startup checks.
 Explicit device selection does not silently switch defaults; format conversion preserves all size,
 PCM and cancellation bounds. Real driver/USB/Bluetooth guarantees remain outside simulated evidence.
+
+## v0.5 validation boundaries
+
+--validate is explicit and standalone. Independent consent gates precede microphone, playback,
+network and registry action effects. Provider consent never implies permission to capture speech;
+synthetic STT is the default. Windows actions in validation are simulated unless --allow-actions.
+Reports omit transcripts/replies unless --show-validation-text; no audio/credentials are saved.
+Existing HTTPS bounds, no-POST-retry, child cleanup and approved registry remain in force. Endpoint
+scope is descriptive only (proxies may alter routing). Cancellation cannot undo remote charges.
+Finite resource probes remove JARVIS settings and start mock idle with no network/audio services.

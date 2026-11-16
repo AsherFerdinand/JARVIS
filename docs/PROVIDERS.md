@@ -51,3 +51,8 @@ The local TLS harness validates these contracts through actual requests and work
 including STT → approved action → TTS and STT → conversation → TTS, failure/recovery/cancellation
 and optional-field differences. It uses public synthetic credentials/audio and a fixture CA, keeps
 certificate checks on, and never contacts a paid service. Hardware compatibility remains unproven.
+
+v0.5 explicit contract probes are described in [VALIDATION.md](VALIDATION.md). Offline preflight
+remains offline. Only --validate stt/chat/tts/interaction with --allow-network can initiate these
+optional checks. A valid empty STT response to synthetic non-speech proves schema acceptance only;
+provider rejection of tones is a limitation to record, not evidence of recognition quality.

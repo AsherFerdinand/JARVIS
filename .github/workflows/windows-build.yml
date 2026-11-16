@@ -34,10 +34,10 @@ jobs:
       - run: uv run --extra audio python scripts/benchmark_voice.py
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
-          name: JARVIS-0.4.0-windows
+          name: JARVIS-0.5.0-windows
           path: |
-            dist/JARVIS-0.4.0-windows.zip
-            dist/JARVIS-0.4.0-windows.zip.sha256
+            dist/JARVIS-0.5.0-windows.zip
+            dist/JARVIS-0.5.0-windows.zip.sha256
             dist/artifact-metrics.json
             dist/baseline-artifact-metrics.json
             dist/baseline-windows-resources.json

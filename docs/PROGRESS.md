@@ -1,3 +1,36 @@
+# v0.5 validation readiness
+
+Branch: feat/jarvis-v0.5-validation. Base: ff09385 (complete v0.4, still unmerged;
+main remains fb0dd47). Preserve stacked history; PR base feat/jarvis-v0.4-compatibility.
+
+Implemented independent offline/backend/device/capture/tone/STT/chat/TTS/PTT stages, explicit
+microphone/playback/network/actions consent, content-free signal metrics and sanitized results.
+Production STT remains strict; the synthetic contract probe permits empty text. Validation
+Windows actions default to mock execution. No new dependencies, background services or endpoints.
+Finite optional CPU/memory/startup benchmark removes provider credentials; local audio activation
+and aggregate provider timings are reported separately. Cold cache is not claimed.
+
+New tests cover consent, signal/tone bounds, silence/invalid audio, cancellation, standalone CLI,
+redaction, local TLS request/error/worker cleanup, English/German canned routing and finite resource
+probes. Existing fake-native stream cleanup and format tests remain. Packaging checks extracted
+CLI consent and simulated-device stages plus each provider stage via real loopback TLS. Exact
+v0.4 package/resource baseline is rebuilt on the same Windows runner.
+
+Cloud checks: 231 passed, 3 Windows-only skips; Ruff lint/format, strict mypy (41 modules),
+wheel/sdist integrity and dependency audit passed. Zero known dependency vulnerabilities (local
+unpublished application skipped by PyPI audit). No mandatory runtime dependency was added.
+
+Validation guide: docs/VALIDATION.md. Categories 3 actual providers, 4 physical mic/speaker and
+5 representative laptop remain deferred; categories 1 automated simulations and 2 hosted Windows
+are recorded below after checks. No paid API, private credential or physical device is required.
+No cloud-environment publication/configuration was changed; no branch merge is authorized.
+
+Next milestone recommendation: v0.6 controlled real-account/device observation and recovery
+findings, when separately authorized; resolve concrete driver/model/quality issues before new
+features. Wake word/hooks/startup/ORBIT/unrestricted control/local models remain outside scope.
+
+---
+
 # Progress
 
 Version: 0.4.0. Branch: feat/jarvis-v0.4-compatibility.

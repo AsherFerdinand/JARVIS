@@ -1,3 +1,17 @@
+# v0.5 performance checkpoint
+
+Optional `--validation-benchmark` measures finite mock idle CPU/working set/private memory and
+fresh readiness without audio/network. See VALIDATION.md for reproducible commands, sample
+limits and explicit scope labels. Fresh startup is not verified cold-cache startup. Capture/
+playback report local activation and elapsed times. Cloud requests report aggregate wall times
+including worker startup/TLS/network/provider; these cannot isolate pure network or remote compute.
+Linux sample: routing median .003736ms / p99 .016975ms (10,000 routes), core construction
+.2073ms (not process startup), 20 mock sessions 18.82ms; reliability 200 sessions after warmup
+retained +352 bytes, peak traced 63,359 bytes, zero request workers. These are synthetic cloud
+measurements, not Windows/laptop acceptance. No new dependency, model, monitor or background service was added. Same-runner comparison uses
+exact v0.4 ff09385, including extracted ZIP resource measurements. Existing provisional targets
+remain unchanged; cloud/CI samples do not establish representative laptop acceptance.
+
 # Performance
 
 Run `uv run python scripts/benchmark.py`. JSON reports 10,000 deterministic routes, median/p99,

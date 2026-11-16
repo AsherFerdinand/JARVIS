@@ -85,3 +85,14 @@ Windows CI now compares exact v0.3 and v0.4 packages/resources. Validate smokes 
 pipelines from extracted ZIPs with no dev environment dependency; preserve signature/TLS/checksum
 checks and worker cleanup. No JSON config template is shipped or consumed. Update continuity
 with actual CI SHAs/results and hardware gaps; do not request user laptop testing in v0.4.
+
+## v0.5 validation continuation
+
+Use docs/VALIDATION.md for independent optional checks. --validate requires separate microphone,
+playback, network and action consent; never bypass these gates or call real providers in tests.
+Synthetic STT can return empty text only in the contract probe, not ordinary voice routing.
+Reports exclude text by default; no sample persistence. Stream timings are local wall times;
+request timings include transport/worker/remote work and do not isolate network latency.
+Use finite --validation-benchmark, never background monitoring. Fresh process startup is not
+verified cold cache. Windows CI compares exact v0.4 ff09385 and v0.5 extracted packages/resources.
+Retain mock/CI/provider/physical-device/laptop evidence categories; last three need observations.

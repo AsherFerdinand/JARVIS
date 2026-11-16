@@ -221,8 +221,40 @@ def executable_pipeline(executable: Path, directory: Path) -> dict[str, object]:
                     "python_peak_bytes": result["python_peak_bytes"],
                 }
             )
+    validation = []
+    with MockProviderServer("Open YouTube.") as server:
+        environment.update(server.settings())
+        for stage in ("stt", "chat", "tts", "interaction"):
+            run = subprocess.run(  # noqa: S603 -- own executable and local TLS fixture
+                [
+                    str(executable),
+                    "--validate",
+                    stage,
+                    "--allow-network",
+                    "--mock-audio",
+                    "--allow-microphone",
+                    "--allow-playback",
+                ],
+                cwd=directory,
+                env=environment,
+                input="\n",
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if run.returncode != 0:
+                raise RuntimeError("Extracted live-validation mock HTTP check failed")
+            report = json.loads(run.stdout)
+            if report["outcome"] != "passed" or report["text_included"]:
+                raise RuntimeError("Extracted validation output failed")
+            validation.append(report)
     audio.unlink()
-    return {"pipeline_cases": outcomes, "paid_calls": 0, "audio_devices_opened": 0}
+    return {
+        "pipeline_cases": outcomes,
+        "validation_cases": validation,
+        "paid_calls": 0,
+        "audio_devices_opened": 0,
+    }
 
 
 if __name__ == "__main__":

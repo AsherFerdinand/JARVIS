@@ -100,3 +100,10 @@ opt-in recognized text. No raw audio or arbitrary provider errors pass through e
 ordering, loss/reconnection semantics remain. `/diagnostics` reports sanitized recent codes and
 server status. --diagnostics on a one-shot voice session adds process/traced allocation/worker
 counts; these optional measurements add instrumentation overhead and are not hardware proof.
+
+## v0.5 controlled checks
+
+See [VALIDATION.md](VALIDATION.md) for optional independent microphone/synthetic speaker/provider/
+PTT checks. Microphone, playback, network and real actions have separate explicit authorization.
+Default reports contain only metrics/codes; no recording is saved. Normal voice behavior remains
+unchanged. This readiness tooling establishes no actual provider, audibility or laptop result.

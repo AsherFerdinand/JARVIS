@@ -90,3 +90,8 @@ HTTP STT/chat/TTS in pytest and from an extracted executable. Runtime --mock-aud
 ports only; it still requires explicit activation and configured providers. --mock-voice stays fully
 offline. Extracted Windows checks remove development environment bindings and restrict PATH to
 Windows system directories. The fixture CA is test input, not a packaged credential or TLS bypass.
+
+v0.5 adds optional `validation` stages selected before ordinary provider startup. Consent gates
+precede effects; native streams, cloud transport and PTT reuse existing modules. There is no new
+server/endpoint/schema, background task, HTTP client or device monitor. A finite explicit benchmark
+uses a fresh credential-free mock child and existing OS resource snapshots.
