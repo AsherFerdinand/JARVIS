@@ -25,6 +25,44 @@ Validation guide: docs/VALIDATION.md. Categories 3 actual providers, 4 physical 
 are recorded below after checks. No paid API, private credential or physical device is required.
 No cloud-environment publication/configuration was changed; no branch merge is authorized.
 
+## Verified v0.5 evidence (2026-11-16)
+
+Tested application/build revision: e71d4ad (following implementation c3235c3).
+Linux CI: https://github.com/AsherFerdinand/JARVIS/actions/runs/43922424579
+passed 231 tests, 3 Windows-only skips, zero errors/failures (1m09s workflow).
+Windows CI: https://github.com/AsherFerdinand/JARVIS/actions/runs/43922424596
+passed all 234 tests, zero skips/errors/failures (2m27s workflow).
+Lint/format, strict typing, dependency audit, actionlint, wheel/sdist records and clean wheel-only
+installation smokes passed. Clean wheel ran offline, simulated mic/speaker and finite benchmark
+without development dependencies. No known dependency vulnerability; local unpublished JARVIS
+is explicitly skipped by PyPI audit. Existing event/API tests remain passing.
+
+Windows packaging passed full manifest/CRC/SHA256 checks, extracted native backend/worker,
+legacy text/mock/offline checks, each missing-consent gate, simulated microphone/tone and finite
+benchmark. The extracted executable also passed individual STT/chat/TTS and PTT validations over
+real loopback HTTPS with fake devices, plus existing action/conversation HTTP pipelines. It used
+system-only PATH and no development Python/venv. These are mock-service/device results, not paid
+provider or physical hardware evidence. Enumeration found zero devices and opened zero streams.
+
+Artifact JARVIS-0.5.0-windows contains ZIP and .zip.sha256, current/baseline artifact/resource JSON
+and portable-validation.json. ZIP: 10,077,752 bytes; extracted: 22,654,647 bytes. Exact ff09385
+rebuilt on the same runner: 10,059,608 / 22,636,271 bytes. Delta +18,144 / +18,376 bytes
+(+0.1804% / +0.0812%). Baseline compressed bytes may differ from prior runs due to packaging
+metadata/compression; the extracted v0.4 size is unchanged. No material resource regression.
+The Actions artifact container digest (not the ZIP checksum) is
+261befdfc8d89810441fc1b57206cdb098dc1b70f19e1125d936f15f103af1f9.
+
+Windows Server 2022 image 20261112.366.7: 5.0007s idle, no measured CPU-time increase,
+working set 28,098,560 bytes / private 19,824,640, readiness 328.015ms, native initialization
+42.508ms, clean natural exit. Same-runner v0.4: 28,147,712 / 19,898,368 bytes, readiness
+326.591ms, initialization 43.003ms, no measured CPU-time increase. Polling/single-sample/cache
+limitations apply. These are not Windows 11 laptop or physical audio latency measurements.
+
+Automatic PR creation failed with GitHub GraphQL Forbidden. Correct stacked compare:
+https://github.com/AsherFerdinand/JARVIS/compare/feat/jarvis-v0.4-compatibility...feat/jarvis-v0.5-validation?expand=1
+Main remains fb0dd47; no merge, release tag or environment publication was performed.
+The final evidence commit changes documentation only; tested application/build SHA is e71d4ad.
+
 Next milestone recommendation: v0.6 controlled real-account/device observation and recovery
 findings, when separately authorized; resolve concrete driver/model/quality issues before new
 features. Wake word/hooks/startup/ORBIT/unrestricted control/local models remain outside scope.

@@ -47,3 +47,7 @@ Tags/manual releases reuse the same least-privilege job; no automatic merge, ins
 or GitHub Release publication. A future scoped checkpoint must cover live provider/device behavior.
 
 Optional independent checks: see [controlled validation guide](VALIDATION.md). No live or device check runs at startup.
+
+For tested revision e71d4ad, Windows run 43922424596 produced the SHA256-verified ZIP
+(10,077,752 bytes; 22,654,647 extracted). The artifact includes portable-validation.json and
+same-runner v0.4 comparisons. See PROGRESS.md for exact results and deferred hardware evidence.

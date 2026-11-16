@@ -12,6 +12,28 @@ measurements, not Windows/laptop acceptance. No new dependency, model, monitor o
 exact v0.4 ff09385, including extracted ZIP resource measurements. Existing provisional targets
 remain unchanged; cloud/CI samples do not establish representative laptop acceptance.
 
+## v0.5 same-runner Windows result
+
+Tested e71d4ad; Windows CI run 43922424596 passed all tests and extracted/package checks.
+Exact v0.4 ff09385 was archived and rebuilt on the same runner, preserving tracked history.
+
+| Metric | v0.4 rebuilt | v0.5 | Interpretation |
+| --- | ---: | ---: | --- |
+| ZIP bytes | 10,059,608 | 10,077,752 | +18,144 (+0.1804%) |
+| Extracted bytes | 22,636,271 | 22,654,647 | +18,376 (+0.0812%) |
+| Working set bytes | 28,147,712 | 28,098,560 | −49,152; sample noise |
+| Private bytes | 19,898,368 | 19,824,640 | −73,728; sample noise |
+| Idle CPU, one core | 0% measured increase | 0% measured increase | finite ~5s; API resolution applies |
+| Ready ms | 326.591 | 328.015 | 50ms polling; fresh, not verified cold |
+| Native backend init ms | 43.003 | 42.508 | no audio stream |
+
+Windows Server 2022 image 20261112.366.7; both finite mock-idle probes exited naturally with code0.
+No material regression appeared. This is one hosted sample, no actual mic/speaker/provider/laptop
+measurement. Compression metadata can vary between builds; use same-runner numbers above.
+New extracted validation benchmark and local TLS stage checks also passed; their full sanitized
+reports are in portable-validation.json. Request walls include worker/TLS/remote work, not isolated
+network latency. No claim is made that audibility or language accuracy passed.
+
 # Performance
 
 Run `uv run python scripts/benchmark.py`. JSON reports 10,000 deterministic routes, median/p99,
