@@ -17,12 +17,14 @@ class CloudSTT:
         *,
         response_format: str = "json",
         language_hint: bool = True,
+        allow_empty: bool = False,
     ) -> None:
         if language not in {"en", "de"}:
             raise ValueError("Supported languages are en and de")
         if response_format not in {"json", "text"}:
             raise ValueError("Unsupported transcription format")
         self.response_format, self.language_hint = response_format, language_hint
+        self.allow_empty = allow_empty
         self.endpoint, self.language = endpoint, language
 
     def transcribe(self, audio: bytes, cancel: Cancellation) -> str:
@@ -55,7 +57,11 @@ class CloudSTT:
             text = (
                 raw.decode("utf-8") if self.response_format == "text" else json.loads(raw)["text"]
             )
-            if not isinstance(text, str) or not text.strip() or len(text) > 4096:
+            if (
+                not isinstance(text, str)
+                or (not text.strip() and not self.allow_empty)
+                or len(text) > 4096
+            ):
                 raise ValueError("Invalid transcription")
             return text
         except (ValueError, KeyError, TypeError, RecursionError) as exc:

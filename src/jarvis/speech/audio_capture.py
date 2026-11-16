@@ -38,11 +38,20 @@ class MockCapture:
 
 
 class MicrophoneCapture:
-    def __init__(self, device: str | None = None) -> None:
+    def __init__(
+        self,
+        device: str | None = None,
+        *,
+        timings: dict[str, float] | None = None,
+        require_signal: bool = True,
+    ) -> None:
         self.device = device
+        self.timings = timings
+        self.require_signal = require_signal
         self._identity: tuple[str, int] | None = None
 
     def record(self, release: Event, cancel: Cancellation, seconds: float) -> bytes:
+        activated = time.perf_counter()
         if not 0 < seconds <= 60:
             raise AudioError("Recording duration must be 0–60 seconds")
         cancel.check()
@@ -89,6 +98,10 @@ class MicrophoneCapture:
                 )
             ) as stream:
                 started = True
+                if self.timings is not None:
+                    self.timings["microphone_activation_ms"] = (
+                        time.perf_counter() - activated
+                    ) * 1000
                 deadline = time.monotonic() + duration
                 while not release.wait(min(0.05, max(0, deadline - time.monotonic()))):
                     cancel.check()
@@ -108,16 +121,20 @@ class MicrophoneCapture:
         if failure.is_set():
             raise AudioError("Microphone overflow or device failure", "audio_input_interrupted")
         audio = encode_wav(bytes(buffer), selected.rate, selected.channels)
-        decode_wav(audio, require_sound=True)
+        decode_wav(audio, require_sound=self.require_signal)
         return audio
 
 
 class DevicePlayback:
-    def __init__(self, device: str | None = None) -> None:
+    def __init__(
+        self, device: str | None = None, *, timings: dict[str, float] | None = None
+    ) -> None:
         self.device = device
+        self.timings = timings
         self._identity: tuple[str, int] | None = None
 
     def play(self, audio: bytes, cancel: Cancellation) -> None:
+        activated = time.perf_counter()
         pcm = decode_wav(audio)
         cancel.check()
         backend = audio_backend()
@@ -136,6 +153,8 @@ class DevicePlayback:
                 )
             ) as stream:
                 started = True
+                if self.timings is not None:
+                    self.timings["playback_startup_ms"] = (time.perf_counter() - activated) * 1000
                 data = memoryview(pcm.data)
                 step = 1024 * pcm.channels * 2
                 try:

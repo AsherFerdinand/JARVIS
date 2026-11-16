@@ -69,7 +69,117 @@ def main() -> int:
         action="store_true",
         help="Simulate devices only; configured provider requests may incur charges",
     )
+    parser.add_argument(
+        "--validate",
+        help="Independent check; microphone/playback/network/actions require separate allow flags",
+        choices=(
+            "offline",
+            "backend",
+            "devices",
+            "microphone",
+            "speaker",
+            "stt",
+            "chat",
+            "tts",
+            "interaction",
+        ),
+    )
+    for effect in ("microphone", "playback", "network", "actions"):
+        parser.add_argument(
+            f"--allow-{effect}",
+            action="store_true",
+            help=f"Authorize {effect} for this validation invocation",
+        )
+    parser.add_argument(
+        "--validation-seconds",
+        type=float,
+        default=2,
+        help="Capture limit >0–5 seconds; speaker tone capped at 2 seconds",
+    )
+    parser.add_argument(
+        "--validation-volume",
+        type=float,
+        default=0.03,
+        help="Synthetic amplitude .005–.1 full scale (default .03)",
+    )
+    parser.add_argument(
+        "--validation-source", choices=("synthetic", "microphone", "file"), default="synthetic"
+    )
+    parser.add_argument("--validation-file", type=Path)
+    parser.add_argument(
+        "--show-validation-text",
+        action="store_true",
+        help="Explicitly include provider transcript/reply in stdout JSON",
+    )
+    parser.add_argument(
+        "--validation-benchmark",
+        action="store_true",
+        help="Finite idle CPU/memory and fresh startup; no devices/network",
+    )
+    parser.add_argument("--benchmark-seconds", type=float, default=5)
+    parser.add_argument(
+        "--benchmark-scope",
+        choices=("unclassified", "shared-ci", "user-machine"),
+        default="unclassified",
+    )
     args = parser.parse_args()
+    if args.validation_benchmark:
+        from jarvis.validation.benchmark import benchmark
+
+        try:
+            print(json.dumps(benchmark(args.benchmark_seconds, args.benchmark_scope)))
+            return 0
+        except (ValueError, OSError, RuntimeError):
+            print(json.dumps({"error": "benchmark_failed"}))
+            return 1
+    if args.validate:
+        from jarvis.speech.audio_capture import MockPlayback
+        from jarvis.validation.runner import Consent, Validator
+        from jarvis.validation.signals import SyntheticCapture
+
+        if (
+            args.command is not None
+            or args.voice
+            or args.voice_file
+            or args.mock_voice
+            or args.events_port is not None
+            or args.log_file
+        ):
+            parser.error("Validation requires a standalone invocation")
+        if args.allow_network and args.validate in {"stt", "chat", "tts", "interaction"}:
+            print(
+                "Provider requests may incur charges; remote work may outlive cancellation.",
+                file=sys.stderr,
+            )
+
+        def release_validation(voice: VoiceController) -> None:
+            try:
+                print("Listening; Enter releases, /cancel cancels:", file=sys.stderr)
+                response = input()
+            except EOFError:
+                voice.cancel()
+            else:
+                voice.cancel() if response == "/cancel" else voice.release()
+
+        validation_report = Validator(
+            capture=SyntheticCapture() if args.mock_audio else None,
+            playback=MockPlayback() if args.mock_audio else None,
+            consent=Consent(
+                args.allow_microphone, args.allow_playback, args.allow_network, args.allow_actions
+            ),
+            seconds=args.validation_seconds,
+            volume=args.validation_volume,
+            show_text=args.show_validation_text,
+        ).run(
+            args.validate,
+            source=args.validation_source,
+            file=args.validation_file,
+            speak=not args.no_speak,
+            release=release_validation,
+        )
+        print(json.dumps(validation_report))
+        codes = {"passed": 0, "blocked": 2, "failed": 1, "cancelled": 130}
+        return codes[str(validation_report["outcome"])]
     server = None
     assistant = None
     controller: VoiceController | None = None
