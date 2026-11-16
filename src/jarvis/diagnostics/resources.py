@@ -53,6 +53,7 @@ def process_resources(pid: int | None = None) -> dict[str, int | float | None]:
             cpu = sum((t.dwHighDateTime << 32) | t.dwLowDateTime for t in times[2:]) / 10_000_000
             return {
                 "working_set_bytes": counters.working_set,
+                "peak_working_set_bytes": counters.peak_ws,
                 "private_bytes": counters.private,
                 "cpu_seconds": cpu,
             }

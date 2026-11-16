@@ -6,6 +6,7 @@ from pathlib import Path
 from jarvis.core.lifecycle import Assistant
 from jarvis.core.voice_controller import VoiceController
 from jarvis.intelligence.conversation import Conversation, MockConversation
+from jarvis.intelligence.preflight import capabilities, require_valid
 from jarvis.speech.audio_capture import (
     DevicePlayback,
     FileCapture,
@@ -19,6 +20,7 @@ from jarvis.speech.ports import Capture, Playback, Synthesizer
 
 
 def endpoint_from_environment(prefix: str) -> Endpoint:
+    require_valid(prefix.removeprefix("JARVIS_"), os.environ)
     url, model, key = (os.getenv(f"{prefix}_{field}", "") for field in ("URL", "MODEL", "KEY"))
     if not all((url, model, key)):
         raise ValueError(f"Configure {prefix}_URL, {prefix}_MODEL and {prefix}_KEY")
@@ -38,6 +40,7 @@ def make_voice(
     mock_text: str | None = None,
     audio_file: Path | None = None,
     speak: bool = True,
+    mock_audio: bool = False,
 ) -> VoiceController:
     if mock_text is not None:
         return VoiceController(
@@ -49,7 +52,12 @@ def make_voice(
             Conversation(MockConversation()),
         )
     language = os.getenv("JARVIS_VOICE_LANGUAGE", "en")
-    stt = CloudSTT(endpoint_from_environment("JARVIS_STT"), language)
+    stt = CloudSTT(
+        endpoint_from_environment("JARVIS_STT"),
+        language,
+        response_format=os.getenv("JARVIS_STT_RESPONSE_FORMAT", "json"),
+        language_hint=capabilities("STT", os.environ).language_hint,
+    )
     tts: Synthesizer | None = None
     playback: Playback | None = None
     if speak:
@@ -59,11 +67,16 @@ def make_voice(
             voice,
             language,
             float(os.getenv("JARVIS_TTS_RATE", "1")),
+            speaking_rate=capabilities("TTS", os.environ).speaking_rate,
         )
-        playback = DevicePlayback(os.getenv("JARVIS_OUTPUT_DEVICE"))
+        playback = (
+            MockPlayback() if mock_audio else DevicePlayback(os.getenv("JARVIS_OUTPUT_DEVICE"))
+        )
     capture: Capture = (
         FileCapture(audio_file)
         if audio_file
+        else MockCapture()
+        if mock_audio
         else MicrophoneCapture(os.getenv("JARVIS_INPUT_DEVICE"))
     )
     return VoiceController(

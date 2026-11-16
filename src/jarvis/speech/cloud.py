@@ -10,9 +10,19 @@ from jarvis.speech.audio import MAX_AUDIO_BYTES, AudioError, decode_wav
 
 
 class CloudSTT:
-    def __init__(self, endpoint: Endpoint, language: str = "en") -> None:
+    def __init__(
+        self,
+        endpoint: Endpoint,
+        language: str = "en",
+        *,
+        response_format: str = "json",
+        language_hint: bool = True,
+    ) -> None:
         if language not in {"en", "de"}:
             raise ValueError("Supported languages are en and de")
+        if response_format not in {"json", "text"}:
+            raise ValueError("Unsupported transcription format")
+        self.response_format, self.language_hint = response_format, language_hint
         self.endpoint, self.language = endpoint, language
 
     def transcribe(self, audio: bytes, cancel: Cancellation) -> str:
@@ -21,9 +31,10 @@ class CloudSTT:
         boundary = uuid.uuid4().hex
         fields = {
             "model": self.endpoint.model,
-            "language": self.language,
-            "response_format": "json",
+            "response_format": self.response_format,
         }
+        if self.language_hint:
+            fields["language"] = self.language
         parts = [
             f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n'
             f"{value}\r\n".encode()
@@ -41,7 +52,9 @@ class CloudSTT:
             b"".join(parts), f"multipart/form-data; boundary={boundary}", cancel
         )
         try:
-            text = json.loads(raw)["text"]
+            text = (
+                raw.decode("utf-8") if self.response_format == "text" else json.loads(raw)["text"]
+            )
             if not isinstance(text, str) or not text.strip() or len(text) > 4096:
                 raise ValueError("Invalid transcription")
             return text
@@ -51,25 +64,34 @@ class CloudSTT:
 
 class CloudTTS:
     def __init__(
-        self, endpoint: Endpoint, voice: str, language: str = "en", rate: float = 1
+        self,
+        endpoint: Endpoint,
+        voice: str,
+        language: str = "en",
+        rate: float = 1,
+        *,
+        speaking_rate: bool = True,
     ) -> None:
         if not voice or language not in {"en", "de"} or not 0.25 <= rate <= 4:
             raise ValueError("Invalid speech settings")
+        if not speaking_rate and rate != 1:
+            raise ValueError("Speaking rate is not supported by this profile")
+        self.speaking_rate = speaking_rate
         self.endpoint, self.voice, self.language, self.rate = endpoint, voice, language, rate
 
     def synthesize(self, text: str, cancel: Cancellation) -> bytes:
         if not text.strip() or len(text) > 4096:
             raise ValueError("Speech text must contain 1–4096 characters")
         # OpenAI speech has no language field: language follows input text/selected voice.
-        payload = json.dumps(
-            {
-                "model": self.endpoint.model,
-                "input": text,
-                "voice": self.voice,
-                "response_format": "wav",
-                "speed": self.rate,
-            }
-        ).encode()
+        fields: dict[str, str | float] = {
+            "model": self.endpoint.model,
+            "input": text,
+            "voice": self.voice,
+            "response_format": "wav",
+        }
+        if self.speaking_rate:
+            fields["speed"] = self.rate
+        payload = json.dumps(fields).encode()
         audio = self.endpoint.post(payload, "application/json", cancel, MAX_AUDIO_BYTES)
         try:
             decode_wav(audio)

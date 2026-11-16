@@ -5,8 +5,15 @@ from pathlib import Path
 from threading import Event
 
 from jarvis.core.cancellation import Cancellation, Cancelled
-from jarvis.speech.audio import MAX_AUDIO_BYTES, AudioError, decode_wav, encode_wav, synthetic_wav
-from jarvis.speech.audio_devices import audio_backend
+from jarvis.speech.audio import (
+    MAX_AUDIO_BYTES,
+    AudioError,
+    convert_pcm,
+    decode_wav,
+    encode_wav,
+    synthetic_wav,
+)
+from jarvis.speech.audio_devices import audio_backend, bind_identity, choose_format
 
 
 class FileCapture:
@@ -33,13 +40,20 @@ class MockCapture:
 class MicrophoneCapture:
     def __init__(self, device: str | None = None) -> None:
         self.device = device
+        self._identity: tuple[str, int] | None = None
 
     def record(self, release: Event, cancel: Cancellation, seconds: float) -> bytes:
         if not 0 < seconds <= 60:
             raise AudioError("Recording duration must be 0–60 seconds")
         cancel.check()
         backend = audio_backend()
-        limit = int(seconds * 16000) * 2
+        selected = choose_format(backend, self.device, "input", 16000, 1)
+        self._identity = bind_identity(self.device, self._identity, selected)
+        frame_bytes = selected.channels * 2
+        limit = (
+            min(int(seconds * selected.rate), (MAX_AUDIO_BYTES - 128) // frame_bytes) * frame_bytes
+        )
+        duration = min(seconds, limit / (selected.rate * frame_bytes))
         buffer = bytearray()
         failure = Event()
         expected_stop = Event()
@@ -64,16 +78,16 @@ class MicrophoneCapture:
 
         try:
             with backend.RawInputStream(
-                samplerate=16000,
-                channels=1,
+                samplerate=selected.rate,
+                channels=selected.channels,
                 dtype="int16",
                 blocksize=1024,
-                device=self.device,
+                device=selected.device,
                 callback=callback,
                 finished_callback=finished,
             ) as stream:
                 started = True
-                deadline = time.monotonic() + seconds
+                deadline = time.monotonic() + duration
                 while not release.wait(min(0.05, max(0, deadline - time.monotonic()))):
                     cancel.check()
                     if time.monotonic() >= deadline:
@@ -91,7 +105,7 @@ class MicrophoneCapture:
         cancel.check()
         if failure.is_set():
             raise AudioError("Microphone overflow or device failure", "audio_input_interrupted")
-        audio = encode_wav(bytes(buffer))
+        audio = encode_wav(bytes(buffer), selected.rate, selected.channels)
         decode_wav(audio, require_sound=True)
         return audio
 
@@ -99,11 +113,15 @@ class MicrophoneCapture:
 class DevicePlayback:
     def __init__(self, device: str | None = None) -> None:
         self.device = device
+        self._identity: tuple[str, int] | None = None
 
     def play(self, audio: bytes, cancel: Cancellation) -> None:
         pcm = decode_wav(audio)
         cancel.check()
         backend = audio_backend()
+        selected = choose_format(backend, self.device, "output", pcm.rate, pcm.channels)
+        self._identity = bind_identity(self.device, self._identity, selected)
+        pcm = convert_pcm(pcm, selected.rate, selected.channels, cancel)
         started = False
         try:
             with backend.RawOutputStream(
@@ -111,7 +129,7 @@ class DevicePlayback:
                 channels=pcm.channels,
                 dtype="int16",
                 blocksize=1024,
-                device=self.device,
+                device=selected.device,
             ) as stream:
                 started = True
                 data = memoryview(pcm.data)

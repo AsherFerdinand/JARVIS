@@ -2,7 +2,9 @@ import argparse
 import json
 import multiprocessing
 import os
+import sys
 import time
+import tracemalloc
 from pathlib import Path
 from threading import Event
 
@@ -13,12 +15,14 @@ from jarvis.core.lifecycle import Assistant
 from jarvis.core.voice_controller import PushToTalkAdapter, VoiceController
 from jarvis.diagnostics.health import health
 from jarvis.diagnostics.logging import configure
+from jarvis.diagnostics.resources import process_resources
 from jarvis.integration.server import EventServer
 from jarvis.intelligence.conversation import CloudConversation, Conversation
+from jarvis.intelligence.preflight import preflight
 from jarvis.intelligence.provider import ProviderError
 from jarvis.intelligence.transport import ProcessTransport
 from jarvis.speech.audio import AudioError
-from jarvis.speech.audio_devices import audio_backend, list_devices
+from jarvis.speech.audio_devices import audio_backend, audio_preflight, list_devices
 from jarvis.speech.session import State
 from jarvis.speech.setup import endpoint_from_environment, make_voice
 
@@ -54,6 +58,17 @@ def main() -> int:
     parser.add_argument(
         "--idle-probe", type=float, help="Explicit bounded idle measurement interval"
     )
+    parser.add_argument(
+        "--provider-preflight", action="store_true", help="Offline provider checks; no requests"
+    )
+    parser.add_argument(
+        "--audio-preflight", action="store_true", help="Check device formats without streams"
+    )
+    parser.add_argument(
+        "--mock-audio",
+        action="store_true",
+        help="Simulate devices only; configured provider requests may incur charges",
+    )
     args = parser.parse_args()
     server = None
     assistant = None
@@ -61,6 +76,26 @@ def main() -> int:
     try:
         logger = configure(args.log_file)
         logger.info("Assistant starting")
+        if args.provider_preflight:
+            report = preflight()
+            print(json.dumps(report, indent=2))
+            return 0 if report["valid_configured_providers"] else 1
+        if args.audio_preflight:
+            print(
+                json.dumps(
+                    audio_preflight(
+                        os.getenv("JARVIS_INPUT_DEVICE"), os.getenv("JARVIS_OUTPUT_DEVICE")
+                    )
+                )
+            )
+            return 0
+        if args.mock_audio and not (args.voice or args.voice_file):
+            raise ValueError("Mock audio requires an explicit voice activation mode")
+        if args.mock_audio:
+            print(
+                "Audio devices simulated; configured provider requests may incur charges.",
+                file=sys.stderr,
+            )
         if args.health:
             print(json.dumps(health(probe_audio=args.check_audio_backend), indent=2))
             return 0
@@ -101,6 +136,7 @@ def main() -> int:
                 mock_text=args.mock_voice,
                 audio_file=args.voice_file,
                 speak=not args.no_speak,
+                mock_audio=args.mock_audio,
             )
         if args.events_port is not None:
             server = EventServer(
@@ -117,6 +153,8 @@ def main() -> int:
         if args.voice_file or args.mock_voice is not None:
             if controller is None:
                 raise ValueError("Voice not configured")
+            if args.diagnostics:
+                tracemalloc.start()
             controller.start()
             result = controller.wait()
             print(
@@ -131,6 +169,9 @@ def main() -> int:
                             "state": result.state.current,
                             "total_tokens": result.total_tokens,
                             "timings_ms": result.timings_ms,
+                            "python_peak_bytes": tracemalloc.get_traced_memory()[1],
+                            "process": process_resources(),
+                            "active_request_workers": len(multiprocessing.active_children()),
                         }
                     )
                 )
@@ -208,6 +249,8 @@ def main() -> int:
             server.close()
         if assistant is not None:
             assistant.close()
+        if tracemalloc.is_tracing():
+            tracemalloc.stop()
         configure(None)
 
 

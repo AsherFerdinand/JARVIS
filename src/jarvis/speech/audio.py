@@ -4,6 +4,8 @@ import io
 import wave
 from dataclasses import dataclass
 
+from jarvis.core.cancellation import Cancellation
+
 MAX_AUDIO_BYTES = 4_000_000
 MAX_RECORD_SECONDS = 60
 
@@ -24,6 +26,8 @@ class PCM:
 
 
 def encode_wav(data: bytes, rate: int = 16000, channels: int = 1) -> bytes:
+    if channels not in (1, 2) or not 8000 <= rate <= 48000:
+        raise AudioError("Unsupported PCM format")
     if len(data) > MAX_AUDIO_BYTES - 128 or len(data) % (channels * 2):
         raise AudioError("Invalid audio size")
     buffer = io.BytesIO()
@@ -63,3 +67,53 @@ def decode_wav(audio: bytes, *, require_sound: bool = False) -> PCM:
 def synthetic_wav() -> bytes:
     # Small deterministic non-silent PCM fixture; contains no real voice.
     return encode_wav(b"\x10\x00\xf0\xff" * 800)
+
+
+def convert_pcm(pcm: PCM, rate: int, channels: int, cancel: Cancellation) -> PCM:
+    """Bounded linear PCM16 conversion for speech; not a studio anti-aliasing resampler."""
+    import sys
+    from array import array
+
+    cancel.check()
+    if (
+        pcm.channels not in (1, 2)
+        or not 8000 <= pcm.rate <= 48000
+        or not pcm.data
+        or len(pcm.data) % (pcm.channels * 2)
+        or len(pcm.data) > MAX_AUDIO_BYTES
+    ):
+        raise AudioError("Invalid source PCM")
+    if rate == pcm.rate and channels == pcm.channels:
+        return pcm
+    if not 8000 <= rate <= 48000 or channels not in (1, 2):
+        raise AudioError("Unsupported conversion format", "audio_conversion_unsupported")
+    source_frames = len(pcm.data) // (pcm.channels * 2)
+    frames = max(1, source_frames * rate // pcm.rate)
+    if frames * channels * 2 > MAX_AUDIO_BYTES:
+        raise AudioError("Converted audio exceeds size bound", "audio_conversion_too_large")
+    source = array("h")
+    source.frombytes(pcm.data)
+    if sys.byteorder != "little":
+        source.byteswap()
+    output = array("h")
+
+    def value(frame: int, channel: int) -> int:
+        if pcm.channels == 2 and channels == 1:
+            return (source[frame * 2] + source[frame * 2 + 1]) // 2
+        return source[frame * pcm.channels + min(channel, pcm.channels - 1)]
+
+    for index in range(frames):
+        if index % 1024 == 0:
+            cancel.check()
+        position, fraction = divmod(index * pcm.rate, rate)
+        left = min(position, source_frames - 1)
+        right = min(left + 1, source_frames - 1)
+        for channel in range(channels):
+            sample = (
+                value(left, channel) * (rate - fraction) + value(right, channel) * fraction
+            ) // rate
+            output.append(sample)
+    if sys.byteorder != "little":
+        output.byteswap()
+    cancel.check()
+    return PCM(output.tobytes(), rate, channels)

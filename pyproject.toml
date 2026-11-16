@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jarvis-assistant"
-version = "0.3.0"
+version = "0.4.0"
 description = "Lightweight Windows assistant with explicit action boundaries"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -43,3 +43,4 @@ files = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["scripts"]
