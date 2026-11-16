@@ -1,10 +1,13 @@
 """PortAudio is imported only after explicit device use, never at core startup."""
 
 import math
-from collections.abc import Mapping
+import sys
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from importlib import import_module
 from types import ModuleType
+from typing import Any
 
 from jarvis.speech.audio import AudioError
 
@@ -186,3 +189,20 @@ def bind_identity(
             )
         return chosen.identity
     return previous
+
+
+@contextmanager
+def managed_stream(stream: Any) -> Iterator[Any]:
+    """Close even when native __enter__/start or __exit__/stop raises."""
+    try:
+        with stream as active:
+            yield active
+    finally:
+        primary = sys.exc_info()[0] is not None
+        close = getattr(stream, "close", None)
+        if callable(close) and not getattr(stream, "closed", False):
+            try:
+                close()
+            except Exception:
+                if not primary:
+                    raise

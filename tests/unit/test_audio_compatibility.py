@@ -9,7 +9,7 @@ from jarvis.config import Config
 from jarvis.core.cancellation import Cancellation, Cancelled
 from jarvis.core.lifecycle import Assistant
 from jarvis.core.voice_controller import VoiceController
-from jarvis.speech.audio import PCM, AudioError, convert_pcm, decode_wav
+from jarvis.speech.audio import PCM, AudioError, convert_pcm, decode_wav, synthetic_wav
 from jarvis.speech.audio_capture import DevicePlayback, MicrophoneCapture
 from jarvis.speech.audio_devices import choose_format, inventory
 from jarvis.speech.mocks import MockSTT, MockTTS
@@ -213,3 +213,33 @@ def test_explicit_index_cannot_silently_rebind_to_different_microphone(monkeypat
         capture.record(release, Cancellation(), 1)
     assert error.value.code == "audio_device_changed"
     assert len(devices.closed) == 1
+
+
+@pytest.mark.parametrize("phase", ["start", "stop"])
+def test_native_start_or_shutdown_failure_still_closes_stream(monkeypatch, phase):
+    closed = []
+
+    class Stream:
+        def __init__(self, **options):
+            pass
+
+        def __enter__(self):
+            if phase == "start":
+                raise OSError("native start failure")
+            return self
+
+        def write(self, data):
+            return False
+
+        def __exit__(self, *args):
+            raise OSError("native stop failure")
+
+        def close(self):
+            closed.append(True)
+
+    monkeypatch.setattr(
+        "jarvis.speech.audio_capture.audio_backend", lambda: SimpleNamespace(RawOutputStream=Stream)
+    )
+    with pytest.raises(AudioError):
+        DevicePlayback().play(synthetic_wav(), Cancellation())
+    assert closed == [True]

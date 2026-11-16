@@ -13,7 +13,7 @@ from jarvis.speech.audio import (
     encode_wav,
     synthetic_wav,
 )
-from jarvis.speech.audio_devices import audio_backend, bind_identity, choose_format
+from jarvis.speech.audio_devices import audio_backend, bind_identity, choose_format, managed_stream
 
 
 class FileCapture:
@@ -77,14 +77,16 @@ class MicrophoneCapture:
             release.set()
 
         try:
-            with backend.RawInputStream(
-                samplerate=selected.rate,
-                channels=selected.channels,
-                dtype="int16",
-                blocksize=1024,
-                device=selected.device,
-                callback=callback,
-                finished_callback=finished,
+            with managed_stream(
+                backend.RawInputStream(
+                    samplerate=selected.rate,
+                    channels=selected.channels,
+                    dtype="int16",
+                    blocksize=1024,
+                    device=selected.device,
+                    callback=callback,
+                    finished_callback=finished,
+                )
             ) as stream:
                 started = True
                 deadline = time.monotonic() + duration
@@ -124,12 +126,14 @@ class DevicePlayback:
         pcm = convert_pcm(pcm, selected.rate, selected.channels, cancel)
         started = False
         try:
-            with backend.RawOutputStream(
-                samplerate=pcm.rate,
-                channels=pcm.channels,
-                dtype="int16",
-                blocksize=1024,
-                device=selected.device,
+            with managed_stream(
+                backend.RawOutputStream(
+                    samplerate=pcm.rate,
+                    channels=pcm.channels,
+                    dtype="int16",
+                    blocksize=1024,
+                    device=selected.device,
+                )
             ) as stream:
                 started = True
                 data = memoryview(pcm.data)
