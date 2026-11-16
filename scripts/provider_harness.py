@@ -116,9 +116,10 @@ class MockProviderServer:
                     body = b"invalid synthetic data"
                 try:
                     self.send_response(200)
-                    self.send_header(
-                        "Content-Type", "audio/wav" if role == "TTS" else "application/json"
-                    )
+                    content_type = "audio/wav" if role == "TTS" else "application/json"
+                    if role == "STT" and response_format == "text":
+                        content_type = "text/plain; charset=utf-8"
+                    self.send_header("Content-Type", content_type)
                     self.send_header("Content-Length", str(len(body)))
                     self.end_headers()
                     self.wfile.write(body)
