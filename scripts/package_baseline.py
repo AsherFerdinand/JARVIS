@@ -1,4 +1,4 @@
-"""Build the exact v0.2 source in an ignored archive directory on the same Windows runner."""
+"""Build the exact v0.3 source in an ignored archive directory on the same Windows runner."""
 
 import json
 import os
@@ -7,15 +7,15 @@ import subprocess
 import tarfile
 from pathlib import Path
 
-BASELINE = "595db1e4ea60146e01e37797702c4bfbd432e4b7"
+BASELINE = "07d7e56960d8df55122c451a2444542448a541ae"
 
 
 def main() -> None:
     if os.name != "nt":
         raise SystemExit("Windows baseline requires Windows")
     root = Path(__file__).resolve().parents[1]
-    archive = root / ".cache/v02-source.tar"
-    baseline = root / ".cache/baseline-v02"
+    archive = root / ".cache/v03-source.tar"
+    baseline = root / ".cache/baseline-v03"
     archive.parent.mkdir(parents=True, exist_ok=True)
     # Only generated files below .cache are replaced; no tracked checkout/worktree is changed.
     if baseline.exists():

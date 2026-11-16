@@ -6,6 +6,8 @@ import platform
 import subprocess
 import tempfile
 import time
+import tomllib
+import zipfile
 from pathlib import Path
 
 from jarvis.diagnostics.resources import process_resources
@@ -83,7 +85,11 @@ def measure(executable: Path) -> dict[str, object]:
 
 def main() -> None:
     root = Path(__file__).resolve().parents[1]
-    report = measure(root / "dist/JARVIS/JARVIS.exe")
+    version = tomllib.loads((root / "pyproject.toml").read_text())["project"]["version"]
+    with tempfile.TemporaryDirectory(prefix="jarvis-resource-extracted-") as folder:
+        with zipfile.ZipFile(root / f"dist/JARVIS-{version}-windows.zip") as archive:
+            archive.extractall(folder)
+        report = measure(Path(folder) / "JARVIS/JARVIS.exe")
     payload = json.dumps(report, indent=2)
     (root / "dist/windows-resources.json").write_text(payload)
     print(payload)

@@ -10,6 +10,8 @@ import tomllib
 import zipfile
 from pathlib import Path
 
+from validate_portable import validate
+
 
 def verify_archive(archive: Path) -> None:
     with zipfile.ZipFile(archive) as packaged:
@@ -72,15 +74,7 @@ def main() -> None:
         raise RuntimeError("Required Windows PortAudio runtime missing")
     shutil.copy(root / "docs/RELEASES.md", bundle / "QUICKSTART.md")
     (bundle / "VERSION").write_text(f"{version}\n")
-    (bundle / "default-config.json").write_text(
-        json.dumps(
-            {
-                "speech_enabled": False,
-                "event_server_enabled": False,
-                "note": "Defaults are built in; this file is informational",
-            }
-        )
-    )
+    # No informational template masquerades as active configuration. Environment settings only.
     files = sorted(p for p in bundle.rglob("*") if p.is_file() and p.name != "SHA256SUMS")
     (bundle / "SHA256SUMS").write_text(
         "".join(
@@ -94,6 +88,13 @@ def main() -> None:
             if path.is_file():
                 output.write(path, path.relative_to(bundle.parent))
     verify_archive(archive)
+    validation = validate(archive)
+    (root / "dist/portable-validation.json").write_text(json.dumps(validation, indent=2))
+    if os.getenv("GITHUB_ACTIONS") == "true":
+        print(
+            "::notice title=Extracted portable validation::"
+            + json.dumps(validation).replace("%", "%25")
+        )
     extracted_bytes = sum(p.stat().st_size for p in bundle.rglob("*") if p.is_file())
     print(f"Extracted bytes: {extracted_bytes}")
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
