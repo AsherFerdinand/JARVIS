@@ -1,138 +1,102 @@
-# Voice and conversation v0.2
+# Voice, devices and configuration (v0.4)
 
-Default startup is text-only. No speech model, microphone stream, audio backend, or voice worker
-is loaded until explicitly requested. There is no wake word, global hook, or background recorder.
+Default startup is text-only: no audio stream, sounddevice import, voice worker, model or cloud
+request starts automatically. No wake word or global keyboard hook exists. The normal pipeline
+is explicit activation → capture → STT → approved command/conversation → TTS → playback.
 
-## Reproducible cloud development
+## Commands
 
 ```sh
 uv sync --locked
+uv run jarvis --mock --command status
 uv run jarvis --mock-voice 'Open YouTube.' --diagnostics
-uv run jarvis --mock-voice 'Explain regenerative braking.' --diagnostics
-uv run pytest -q
-uv run python scripts/benchmark_voice.py
+uv run jarvis --provider-preflight
+uv run jarvis --health
 ```
 
-Mock voice uses tiny synthetic PCM (not a recording of a person), a deterministic transcript,
-mock cloud conversation and mock playback. It never calls a paid endpoint or accesses devices.
-`--mock` controls OS effects; `--mock-voice` also forces mock OS effects even on Windows.
+Mock voice is fully offline: synthetic PCM, transcript, conversation and playback, including mock
+OS actions. --mock alone mocks OS effects only. --mock-audio simulates devices only; configured
+providers still receive requests on explicit activation and may charge. It is intended for local
+mock HTTP testing, not as a substitute for fully offline --mock-voice.
 
-## Explicit cloud/device activation
+Real devices additionally need `uv sync --locked --extra audio`; Windows wheels bundle PortAudio,
+Linux source use needs a trusted system PortAudio library. `--check-audio-backend` loads the backend
+without streams; `--audio-preflight` enumerates/checks candidate PCM formats with streams_opened=0.
+`--list-audio-devices` explicitly prints names/indexes. Health/preflight/error reports hide names.
+None of these checks establishes a working physical microphone or audible speaker.
 
-Install `uv sync --locked --extra audio` for real device input/output. Windows wheels provide
-PortAudio; source development on Linux additionally needs a trusted system PortAudio library.
-The portable Windows build includes this optional runtime without development tools or models.
-
-Set these environment settings securely before enabling voice (never commit values):
+## Environment settings (no configuration file)
 
 | Setting | Purpose |
 | --- | --- |
-| JARVIS_STT_URL / MODEL / KEY | Full HTTPS transcription endpoint, model and bearer key; all required |
-| JARVIS_STT_TIMEOUT | Socket timeout seconds, default 15, >0 and <=120 |
-| JARVIS_TTS_URL / MODEL / KEY | Full HTTPS speech endpoint, model and bearer key; required unless --no-speak |
-| JARVIS_TTS_VOICE | Explicit provider voice identifier; required with speech output |
-| JARVIS_TTS_RATE | Provider speaking speed, 0.25–4, default 1 |
-| JARVIS_TTS_TIMEOUT | Socket timeout seconds, default 15, >0 and <=120 |
-| JARVIS_AI_URL / MODEL / KEY | Optional full HTTPS chat-completions endpoint for non-command conversations |
-| JARVIS_AI_TIMEOUT | Chat socket timeout seconds, default 15, >0 and <=120 |
-| JARVIS_VOICE_LANGUAGE | en (default) or de; STT language hint and conversation response language |
-| JARVIS_RECORD_SECONDS | Maximum capture duration, default 20, >0 and <=60 |
-| JARVIS_INPUT_DEVICE / OUTPUT_DEVICE | Optional PortAudio device name; defaults to system device |
-| JARVIS_SHARE_TRANSCRIPT | 1 explicitly shares recognized text on authenticated voice event channel; default 0 |
+| JARVIS_STT_URL / MODEL / KEY | Full HTTPS transcription endpoint, chosen model, secure bearer key |
+| JARVIS_TTS_URL / MODEL / KEY | Full HTTPS speech endpoint, chosen model, secure bearer key |
+| JARVIS_TTS_VOICE | Explicit string voice identifier supported by that provider/model |
+| JARVIS_AI_URL / MODEL / KEY | Optional HTTPS chat-completions conversation provider |
+| JARVIS_AI/STT/TTS_TIMEOUT | Response inactivity timeout, default 15 s, >0 and <=120 |
+| JARVIS_AI/STT/TTS_CONNECT_TIMEOUT | Connection timeout, default 10 s, capped by response timeout |
+| JARVIS_AI/STT/TTS_DEADLINE | Total request deadline including queue/spawn, default 30 s, >0 and <=120 |
+| JARVIS_VOICE_LANGUAGE | en (default) or de, STT hint and conversation instruction |
+| JARVIS_TTS_RATE | Speaking rate 0.25–4 (default 1), only when declared supported |
+| JARVIS_INPUT_DEVICE / OUTPUT_DEVICE | Default when absent; unique name substring/exact name or index:N |
+| JARVIS_RECORD_SECONDS | Maximum capture time, default 20, >0 and <=60; byte cap can shorten it |
+| JARVIS_SHARE_TRANSCRIPT | 1 explicitly shares recognized text on authenticated voice events; default 0 |
 
-For OpenAI, full paths are `/v1/audio/transcriptions`, `/v1/audio/speech`, and
-`/v1/chat/completions` on `https://api.openai.com`; no endpoint or model is assumed in code.
-Use models supporting JSON transcription and WAV speech. Formats were checked against
-[OpenAI's published OpenAPI schema](https://github.com/openai/openai-openapi/blob/master/openapi.yaml)
-on 2026-11-15. STT uses multipart model/language/response_format=json/file(speech.wav).
-TTS uses JSON model/input/voice/response_format=wav/speed. TTS has no documented language
-field: language follows the input text and selected voice. Known German commands receive
-German spoken confirmations; system/application status may include technical OS/executor strings. Model/voice/language/speed support
-varies by provider; live endpoint compatibility is not claimed by mocked contract tests.
+Profiles, supported response formats and optional field/role overrides are described once in
+[PROVIDERS.md](PROVIDERS.md). Use --provider-preflight for local configuration errors. Valid syntax
+is not live endpoint verification. Inactive/unconfigured providers do not prevent deterministic or
+mock commands. Store keys securely outside the repository, never in command-line arguments.
+The old informational default-config.json is no longer shipped; environment configuration is consumed.
 
-```sh
-uv run jarvis --voice --mock
-```
+`uv run jarvis --voice --mock` enables live input/cloud speech with simulated OS actions after
+configuration. Type /voice then Enter to activate; speak, then Enter releases (or /cancel cancels).
+`--voice-trigger /talk` changes the in-app activation command. Duration/byte limits also stop capture.
+During provider work/playback Ctrl+C requests cancellation and exits. Programmatic adapters can
+cancel without exiting. `--no-speak` needs no TTS provider or output device. `--voice-file PATH`
+explicitly uploads that bounded PCM WAV to STT; it never opens a microphone. No routine tests need
+keys, paid endpoints or physical devices, and no user Windows installation/testing is requested now.
 
-Type `/voice` then Enter to activate the microphone. Speak, then press Enter to release it.
-`/cancel` at the recording prompt cancels instead. The duration limit also stops capture.
-`--voice-trigger /talk` changes the activation command. This in-app press/release adapter is
-intentional: no remotely unvalidated global keyboard hook is installed. Future global shortcuts
-can call the same PushToTalkAdapter after consent and Windows validation.
+## Device selection and PCM negotiation
 
-During transcription, conversation or playback, Ctrl+C requests cancellation and exits the CLI.
-Programmatic adapters can call controller.cancel() without exiting. A second session is rejected
-while the first is running/draining. Socket requests cannot be forcibly aborted by urllib;
-late results are discarded, and their single worker must drain before another activation.
-Socket timeouts are not strict total wall-clock deadlines against a slow-drip remote server.
-A side effect already committed before cancellation cannot be undone.
+A fresh PortAudio inventory is queried on each activated capture/playback. Default devices may
+change between sessions; explicit selection never falls back to a different default. Ambiguous
+names fail; index:N disambiguates host API entries. Explicit adapters pin the first resolved
+name/host-API pair and reject an index that later points to a changed identity. PortAudio indices
+are not stable hardware serial numbers, and identical labels cannot establish physical identity.
+Reselect/create a new adapter after intentional explicit-device changes. No private PortAudio
+terminate/reinitialize calls or background device polling are used. Some host API inventories cache
+hotplug changes until application restart; this remains a real hardware limitation.
 
-`--voice-file PATH --no-speak --mock` explicitly uploads a bounded prerecorded PCM16 WAV to the
-configured STT endpoint without opening a microphone or speaker. Omit --no-speak only when
-cloud TTS and an output device are configured. This is not an automatic file upload.
-`--list-audio-devices` queries devices explicitly; `--check-audio-backend` loads the optional
-backend without opening streams. Device failures produce safe generic error codes.
+check_input_settings/check_output_settings validate PCM16 before opening streams. Capture prefers
+16 kHz mono, then a bounded native/fallback rate (8–48 kHz) and stereo when required. It retains the
+negotiated WAV format for STT. Playback prefers the returned rate/channels; if unavailable, bounded
+mono/stereo mixing and linear interpolation adapt to a validated device format. These are simple
+speech conversions, not high-fidelity anti-aliasing codecs; no MP3/Opus dependency is introduced.
+Unsupported settings, missing defaults, unplugged selections and corrupted inventory fail with
+sanitized codes. Native start/stop exceptions still trigger an explicit close attempt.
 
-## Bounds and safety
+Capture PCM is capped below 4,000,000 bytes, preserving WAV/multipart bounds; at 48 kHz stereo the
+cap shortens a 60-second configured limit to about 20.8 seconds. Playback WAV/conversion output
+is <=4 MB and <=120 seconds, PCM16 mono/stereo 8–48 kHz. Conversion checks cancellation every
+1024 frames. Unsupported/corrupt/truncated WAV fails rather than guessing another encoding.
+Audio is transient memory; only synthetic test fixtures use temporary files, removed by the harness.
 
-PCM16 mono capture is 16 kHz; <=60 seconds (1,920,000 PCM bytes). All WAV input/output is capped
-at 4,000,000 bytes, with 8–48 kHz PCM16 mono/stereo playback, <=120 seconds. Multipart/validation
-can make bounded temporary copies. WAV streaming-length sentinels are supported under the
-same byte limit; truncated regular WAVs are rejected. Silence/empty transcripts fail safely.
-Text/transcripts/replies are <=4096 characters. Conversation history holds <=6 turns and
-<=16,000 characters, in memory only; failed/cancelled provider replies are not appended.
+## Recovery, events and guarantees
 
-Known commands (including trailing periods/exclamation marks and documented German aliases)
-use the same registry and executor as text mode. Questions, negation and multi-command phrases
-are not fuzzy-matched into actions. Unknown voice requests can become plain-text conversations;
-AI reply text never becomes an executable intent. Unsupported/sensitive capabilities remain denied.
-No STT confidence guarantee is claimed; an exact but incorrectly recognized safe command remains
-a hardware/provider risk. No destructive command is registered.
+States remain idle → listening → transcribing → processing → [executing] → [speaking] → completed,
+with failed/cancelled terminals and final idle events. Fresh activation follows normal failures;
+concurrent activation is rejected. Capture completion/inactivity is checked only while activated.
+One deadline-supervised HTTP child is allowed; cancel terminates/reaps it locally, not remote
+provider work/charges. OS scheduling/creation is not hard real-time; cleanup allows <=0.5 s.
 
-## States and events
+Cancelled voice turns do not commit conversation history, including cancellation during TTS.
+Clear invalidates pending turns. History remains <=6 turns/16k characters; events <=128. The action
+commit gate cannot undo an already committed operation. Controller close is terminal with a bounded
+2-second join. A non-cooperative native driver/custom adapter may still need process restart;
+unsafe thread termination and replacement-worker accumulation are not used.
 
-idle → listening → transcribing → processing → [executing] → [speaking] → completed.
-Any nonterminal state may transition to failed/cancelled; terminals cannot restart. New activation
-creates a fresh session. Capture/playback own device context managers. Cancellation is checked
-at every phase and atomically gates action execution and conversation history commits.
-
-`/v1/events` preserves the v0.1 event types and field shape. Authenticated `/v1/voice-events`
-adds session_id and optional recognized_text/error_info plus transcribing, transcription completed,
-session completed/failed/cancelled and playback completed/cancelled events. Session events and
-command events share session/correlation IDs. No raw audio or arbitrary exception text is emitted.
-Speech is shown as speaking during synthesis/playback; playback completion means the output
-stream finished, not proof that a physical speaker was audible. Existing snapshot retention and
-reconnection limitations still apply. Consumers of the extended channel must ignore unknown fields/types.
-
-## v0.3 recovery behavior (supersedes the v0.2 transport limitation above)
-
-Real requests now run in one deadline-supervised child at a time. Cancellation terminates that
-local child; it does not undo a provider request already received. A recovered session can activate
-after its worker finishes cleanup. Default connection timeout: min(10, response timeout); response
-inactivity: 15 seconds; total deadline: 30 seconds, including queue/startup, with <=0.5-second OS
-cleanup allowance. Configure JARVIS_AI/STT/TTS_CONNECT_TIMEOUT and _DEADLINE in addition to the
-existing _TIMEOUT (response inactivity); all values >0 and <=120. POSTs do not retry automatically.
-
-Normal device/network/auth/format failures end in failed + idle with a sanitized code; the next
-activation opens fresh resources. No automatic microphone restart or fallback recording occurs.
-Capture polls device activity every 50 ms only while explicitly listening and also observes stream
-completion callbacks. Cancel/close do not wait for a committed action to finish; an operation whose
-commit gate passed before cancellation cannot be reversed. close permanently prevents activation
-and waits <=2 seconds. Driver/custom adapter hangs are outside safe Python thread interruption;
-a hung native call can require restarting the process, with no replacement worker accumulation.
-
-Voice conversation turns commit only after successful session completion, not when their network
-reply first arrives. Cancelled synthesis/playback does not retain the prepared question/answer.
-Clear invalidates pending turns. Adapter callbacks carry the activated session ID; stale callbacks
-cannot release/cancel a newer session. Existing event names, ordering, authentication and legacy
-snapshot compatibility remain intact; granular error codes use existing error_info.
-
-Run `uv run jarvis --health` or type `/diagnostics` in text mode for sanitized status. To explicitly
-load the optional native audio backend without streams, use `--health --check-audio-backend`.
-`--check-provider-worker` verifies spawn/IPC without contacting any provider. Finite `--mock
---idle-probe 8` is for automated resource sampling, not a background service. No user-side Windows
-installation/testing is requested for this milestone.
-
-CI recovery checks now also publish only sanitized failing test identifiers/types, known error
-codes and literal numeric comparisons, never assertion text or captured content. Final Windows
-validation passed all 160 tests; see PROGRESS.md for exact tested SHA and artifact links.
+Authenticated /v1/events preserves legacy types/fields; /v1/voice-events adds session metadata and
+opt-in recognized text. No raw audio or arbitrary provider errors pass through events. Existing
+ordering, loss/reconnection semantics remain. `/diagnostics` reports sanitized recent codes and
+server status. --diagnostics on a one-shot voice session adds process/traced allocation/worker
+counts; these optional measurements add instrumentation overhead and are not hardware proof.

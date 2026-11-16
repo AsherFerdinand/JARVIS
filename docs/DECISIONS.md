@@ -72,3 +72,27 @@
   branch/PR concurrency and tag-only reusable release packaging. A same-runner v0.2 source archive
   build establishes actual package-size deltas without moving/resetting the development checkout.
   Windows measurements are finite mock-idle probes, not representative laptop acceptance tests.
+
+## v0.4
+
+- Reviewed current official OpenAPI/sounddevice sources; no SDK or codec framework was justified.
+  Runtime keeps zero mandatory third-party dependencies. Offline syntax/capability validation and
+  actual provider verification are explicitly different; no paid preflight probe is implemented.
+- Conservative compatible profiles omit optional speech fields; overrides and chat instruction-role
+  adaptation are explicit. Known documented JSON-only model restrictions are validation data, not
+  runtime model defaults. Unknown models/voices are unverified, not silently claimed compatible.
+- Fresh inventory/format queries occur at activation only. Explicit selection fails closed instead
+  of switching microphone, including changed index name/host-API binding. No undocumented native
+  backend restart; stale host API snapshots remain a hardware limitation. Name matching is not a
+  persistent serial-number identity guarantee.
+- Bounded PCM16 mixing/linear resampling handles concrete native-rate/channel mismatches. Normal
+  formats take a no-conversion path. Voice quality and cancellation are prioritized; it is not a
+  studio anti-aliasing converter. Invalid/oversized conversions fail without adding codecs/models.
+- Native context initialization can raise before __exit__ runs; the managed stream wrapper makes
+  a close attempt even on start/stop exceptions. Tests simulate both, plus disconnect/switch/cancel.
+- Shared local TLS harness validates the complete real HTTP pipeline, including frozen workers.
+  --mock-audio is device-only and warns about provider costs; tests isolate inherited provider
+  bindings and use synthetic local credentials. No live paid call is authorized by this milestone.
+- Portable smokes/resources run from fresh temporary ZIP extractions with no dev venv/Python path.
+  v0.3 is rebuilt and sampled on the same runner. Removed the misleadingly named informational
+  default-config.json; actual configuration remains backward-compatible environment settings.

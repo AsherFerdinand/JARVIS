@@ -197,7 +197,7 @@ def test_pcm_conversion_values_bounds_and_cancel():
     with pytest.raises(Cancelled):
         convert_pcm(pcm, 16000, 1, cancel)
     with pytest.raises(AudioError):
-        convert_pcm(PCM(b"\x00\x00" * 1000000, 8000, 1), 48000, 2, Cancellation())
+        convert_pcm(PCM(b"\x00\x00" * 600000, 8000, 1), 48000, 2, Cancellation())
 
 
 def test_explicit_index_cannot_silently_rebind_to_different_microphone(monkeypatch):
@@ -243,3 +243,12 @@ def test_native_start_or_shutdown_failure_still_closes_stream(monkeypatch, phase
     with pytest.raises(AudioError):
         DevicePlayback().play(synthetic_wav(), Cancellation())
     assert closed == [True]
+
+
+def test_corrupt_default_index_cannot_select_another_device():
+    devices = Devices()
+    devices.default.device[0] = 0.9
+    with pytest.raises(AudioError) as error:
+        choose_format(devices, None, "input", 16000, 1)
+    assert error.value.code == "audio_input_unavailable"
+    assert not devices.closed

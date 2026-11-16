@@ -81,6 +81,7 @@ def convert_pcm(pcm: PCM, rate: int, channels: int, cancel: Cancellation) -> PCM
         or not pcm.data
         or len(pcm.data) % (pcm.channels * 2)
         or len(pcm.data) > MAX_AUDIO_BYTES
+        or len(pcm.data) / (pcm.rate * pcm.channels * 2) > 120
     ):
         raise AudioError("Invalid source PCM")
     if rate == pcm.rate and channels == pcm.channels:

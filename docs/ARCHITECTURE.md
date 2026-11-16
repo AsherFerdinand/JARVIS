@@ -72,3 +72,21 @@ responses retain the two-second socket timeout.
 `--health` and `/diagnostics` expose inexpensive configuration/resource snapshots; explicit audio
 probe can be added to --health. The existing voice event error_info carries sanitized codes; no
 recovery-specific public event types or protocol meaning changes were necessary.
+
+## v0.4 compatibility
+
+Offline preflight declares wire profiles/capabilities separately from live verification. Cloud
+adapters preserve the shared transport/permission boundary, with explicit text/JSON transcription,
+omission of unsupported optional audio fields, and system/developer/none chat instruction roles.
+No SDK, configuration file or live-probe side effect was introduced. See PROVIDERS.md for evidence.
+
+Device adapters query inventory and validate rate/channel/PCM settings before each activation,
+retaining explicit identity bindings. Bounded PCM conversion handles output mismatches; optional
+native imports remain lazy. A small managed-stream wrapper closes partially started/stopped native
+streams even when context initialization fails. No driver refresh service/private reinitialization.
+
+The test-only TLS harness lives under scripts, outside the runtime package. It exercises actual
+HTTP STT/chat/TTS in pytest and from an extracted executable. Runtime --mock-audio simulates device
+ports only; it still requires explicit activation and configured providers. --mock-voice stays fully
+offline. Extracted Windows checks remove development environment bindings and restrict PATH to
+Windows system directories. The fixture CA is test input, not a packaged credential or TLS bypass.

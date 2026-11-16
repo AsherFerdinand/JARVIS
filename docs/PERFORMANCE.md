@@ -99,3 +99,48 @@ NOT a three-second shutdown latency. Shared runner load and a five-second sample
 representative Windows laptop targets. No live devices, paid providers or Windows GUI actions
 were measured. Native init opens no stream; it does not establish an audible speaker or working
 microphone. Preserve the separately scoped hardware checkpoint requirement.
+
+## v0.4 compatibility profile (2026-11-16)
+
+Linux sample: router median/p99 0.003746/0.009184 ms, constructor 0.165726 ms (imports excluded).
+128 warmup + 200 synthetic sessions: 186.456 ms total, 408 retained traced bytes, peak 62,855,
+128 event/effect entries and zero surviving request workers. v0.3's sample was 352 retained bytes
+and 61,399 peak; these tiny differences are fixed instrumentation/allocation variation, not evidence
+of a growing queue or a long-duration leak result. Probe startup 81.29–97.20 ms, helper RSS
+18,927,616 bytes; these are synthetic spawn costs, not network or hardware latency.
+
+Audio benchmark traced peak 3,891,993 bytes versus v0.3's 3,892,001 (essentially unchanged); max
+fixture 1,920,044 bytes. Core/audio-import Linux RSS 17,532/20,776 KiB (3,244 KiB delta), compared
+with previous 17,540/20,760. No idle/background/device polling or mandatory runtime dependency was
+added. PCM conversion activates only on format mismatch and checks size/duration/cancellation;
+its actual device latency/quality has not been measured on hardware.
+
+### First extracted Windows v0.4 result (990e3f2)
+
+https://github.com/AsherFerdinand/JARVIS/actions/runs/43870557107 — Server 2022 10.0.20348,
+image 20261112.366.7, actual extracted executables, five-second mock idle, same-runner baseline:
+
+| Metric | v0.4 | Rebuilt v0.3 |
+| --- | --- | --- |
+| Readiness ms (50-ms observation granularity) | 329.929 | 373.437 |
+| Native backend init ms, excluding startup | 42.555 | 42.895 |
+| Working set bytes | 28,180,480 | 27,824,128 |
+| Private bytes | 19,865,600 | 19,808,256 |
+| Measured idle CPU increase | 0.0% | 0.0% |
+| Application ZIP bytes | 10,058,325 | 10,045,690 |
+| Extracted logical bytes | 22,634,267 | 22,620,450 |
+
+The ZIP/extracted delta is +12,635/+13,817 bytes (about 0.13%/0.06%); no material package/memory
+regression was observed in this sample. Startup differences are not a claimed optimization; shared
+runner load, first-use caches, sampling granularity and baseline ordering vary. Windows laptop
+CPU/RAM/startup targets remain unverified. CPU accounting saw no change at its resolution; a short
+sample does not establish literal zero CPU use. Natural exit code was 0; remaining probe wait is
+not shutdown latency.
+
+Extracted mock voice: 21,001 traced peak bytes and 28,176,384 process peak working-set bytes.
+Real local HTTP paths in the extracted executable: 4,018,346 traced peak bytes and about 32 MB
+process peak working set, including instrumented transient request buffers; request worker count
+returned to zero. Those input/output devices were simulated. Native enumeration found zero devices
+and opened zero streams. These measurements do not prove a real microphone/speaker, USB/Bluetooth
+behavior, paid-provider integration or model latency. Final run evidence is kept in PROGRESS.md;
+resource/portable/baseline JSON is published with the artifact and as sanitized CI notices.

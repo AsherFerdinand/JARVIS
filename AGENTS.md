@@ -66,3 +66,22 @@ builds v0.3, runs frozen worker/device/mock checks and finite CPU/memory/startup
 Inspect its notices, metric artifacts and exact tested SHA. Do not equate hosted results with
 representative laptop performance or physical device compatibility. Do not ask for local Windows
 testing during v0.3, merge automatically, modify ORBIT, or expand into excluded capabilities.
+
+## v0.4 compatibility continuation
+
+Current voice/config docs are VOICE.md and PROVIDERS.md. Use --provider-preflight for local
+configuration checks only; never equate them or the TLS mock harness with live provider success.
+--mock-voice is offline; --mock-audio simulates devices ONLY and can call configured providers on
+explicit activation. Do not authorize paid calls implicitly or inherit live test credentials.
+
+Keep fresh inventory/format validation at activation, explicit device bindings, PCM/WAV bounds,
+managed native stream cleanup and lazy audio imports. No private PortAudio restart or background
+polling. Conversion is bounded PCM16 speech mixing/linear interpolation, not a general codec.
+Tests need no physical devices or API keys; tests/conftest.py strips JARVIS bindings by default.
+`uv run pytest` also imports the shared scripts/provider_harness.py through the configured scripts
+path. Never import that test server, fixture CA/key or developer code into the runtime package.
+
+Windows CI now compares exact v0.3 and v0.4 packages/resources. Validate smokes and real mock-HTTP
+pipelines from extracted ZIPs with no dev environment dependency; preserve signature/TLS/checksum
+checks and worker cleanup. No JSON config template is shipped or consumed. Update continuity
+with actual CI SHAs/results and hardware gaps; do not request user laptop testing in v0.4.

@@ -104,7 +104,9 @@ def choose_format(
     rows = inventory(backend)
     try:
         if selection is None:
-            index = int(backend.default.device[0 if direction == "input" else 1])
+            index = backend.default.device[0 if direction == "input" else 1]
+            if type(index) is not int:
+                raise ValueError("Invalid default device index")
         elif selection.startswith("index:"):
             index = int(selection[6:])
         else:

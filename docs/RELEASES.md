@@ -1,24 +1,47 @@
-# v0.3 portable builds
+# JARVIS v0.4 portable build and configuration reference
 
-No local Windows installation or testing is required during this milestone. Windows Actions builds
-JARVIS-0.3.0-windows.zip and .zip.sha256, with artifact-metrics.json, baseline-artifact-metrics.json
-and windows-resources.json. A v0.3.0 tag or manual release workflow calls the same packaging job;
-branch/PR concurrency limits duplicate jobs, and tag pushes do not also launch branch packaging.
-No merge, installer, signing or GitHub Release publication occurs automatically.
+No local Windows installation or testing is requested for this milestone. CI produces
+JARVIS-0.4.0-windows.zip and .zip.sha256 plus artifact/baseline/resource/portable-validation JSON.
+The ZIP contains its runtime, VERSION, QUICKSTART and a complete SHA256SUMS manifest. No local
+Python/development environment, model, test key/data or cache is required/bundled. Executables
+remain unsigned; download only from a trusted successful run and verify the accompanying hash.
 
-CI installs locked Python 3.12 tooling/audio dependencies, runs tests/audit, archives exact v0.2
-source under ignored .cache (without modifying any checkout), and rebuilds that baseline in the
-same runner/toolchain. It then builds v0.3 with PyInstaller onedir, verifies text/system-info,
-mock voice, isolated worker spawn, health/backend load and PortAudio DLL presence. Complete ZIP
-manifest SHA256/CRC checks run before upload. Baseline/current sizes and deltas are reported as
-sanitized notices and JSON metrics; Actions wrapper size is not the application ZIP size.
+## Configuration and safe modes
 
-Windows resources use a finite 8-second mock-idle executable, with 5-second CPU/memory sampling,
-readiness/deadline checks, natural process exit and a separate backend-import process. The JSON
-records OS/runner/method/interval/limits. It is a shared-host sample, not a physical microphone,
-speaker, laptop idle or cold-cache benchmark. Private bytes/working set are distinct measurements.
+These document operation, not a request to perform a hardware test now:
 
-Download only from a trusted successful run. The portable runtime needs no user Python/dev tools
-and includes no speech/LLM models, test TLS keys, datasets or cache. The default JSON remains
-informational. Executables are unsigned; this remains a distribution-trust limitation. See
-PROGRESS.md for actual run links/status/sizes, not assumptions from workflow definitions.
+- `JARVIS.exe --mock-voice "Open YouTube." --diagnostics`: fully offline synthetic voice/OS pipeline.
+- `JARVIS.exe --provider-preflight`: offline provider syntax/capability report; no API calls.
+- `JARVIS.exe --health`: sanitized status. `--check-audio-backend`: load PortAudio, no streams.
+- `JARVIS.exe --list-audio-devices`: explicitly enumerate. `--audio-preflight`: test formats without recording.
+- Set JARVIS_STT_URL/MODEL/KEY and JARVIS_TTS_URL/MODEL/KEY/VOICE securely in the environment.
+  Optional JARVIS_AI_URL/MODEL/KEY enables conversations. No model is chosen automatically.
+- Full HTTPS bearer endpoints use transcription multipart JSON/text, TTS WAV PCM16 and
+  non-streamed chat-completions text. JARVIS_VOICE_LANGUAGE=en/de; JARVIS_TTS_RATE=0.25–4.
+  Profiles/overrides are documented at docs/PROVIDERS.md in the repository; not every compatible
+  endpoint/model/voice supports identical fields. Local validation is never live verification.
+- JARVIS_INPUT_DEVICE/OUTPUT_DEVICE select a unique name or index:N; absent uses the default.
+- `JARVIS.exe --voice`: in-app /voice activation, Enter releases, /cancel cancels. --no-speak
+  disables TTS/output. --voice-trigger changes the activation command. No global hooks/wake word.
+- --voice-file explicitly uploads the chosen bounded WAV. --mock mocks OS effects only;
+  --mock-audio mocks devices only and DOES NOT disable configured provider requests/charges.
+
+Configuration is actually consumed from environment variables; no active or informational JSON
+configuration template is shipped. Never store keys in source, command arguments or this guide.
+
+## CI evidence and limitations
+
+Windows CI runs tests/audit and baseline/current builds, then verifies ZIP CRC/complete manifest
+hashes. Smokes run against a fresh extracted executable outside the checkout, with dev bindings
+removed and system-only PATH: version/text/mock voice, health/preflight/backend/worker init,
+headless-capable device enumeration, real local TLS STT/action/TTS and STT/chat/TTS, worker cleanup.
+The test server/fixture CA remain external test inputs; no physical device or paid endpoint is used.
+
+Finite idle/native-backend/resource probes also use extracted v0.3/current executables on the same
+runner. Portable validation records mock voice process/traced peaks and worker counts. Artifacts
+and sanitized notices expose measured counts/sizes/CPU/RAM. Shared runner or fake-device success
+is not representative laptop, real USB/Bluetooth, microphone/speaker or live API proof. See
+PROGRESS.md/PERFORMANCE.md for exact tested SHA, run links, results and remaining gaps.
+
+Tags/manual releases reuse the same least-privilege job; no automatic merge, installer, signing
+or GitHub Release publication. A future scoped checkpoint must cover live provider/device behavior.

@@ -61,3 +61,18 @@ Cancelled voice turns never commit history; cleared history cannot be restored b
 Event shutdown interrupts partial client requests; bounded header reads also prevent a slow
 local client from extending the header phase indefinitely. Unsigned build and same-account malware risks
 remain; no local hardware, live credential request, persistence, hooks or new capabilities added.
+
+## v0.4 compatibility checks
+
+--provider-preflight is offline and returns only codes/capability booleans, never endpoint/model/key
+values. It does not verify credentials or endpoint access. --audio-preflight queries/checks formats
+without streams; device names are shown only by explicit enumeration. No config file stores secrets.
+--mock-audio mocks devices only, so its help/output warns that explicitly activated configured
+provider requests can be billed; --mock-voice remains the fully offline option.
+
+Automated tests remove inherited JARVIS provider settings before installing synthetic local TLS
+bindings. The harness uses actual HTTPS requests, retains certificate checks, and tests auth/rate/
+format/failure/cancellation without a paid service. Test-only keys/CA/audio/harness and developer
+packages are not bundled into the runtime ZIP. No network/recording is triggered by startup checks.
+Explicit device selection does not silently switch defaults; format conversion preserves all size,
+PCM and cancellation bounds. Real driver/USB/Bluetooth guarantees remain outside simulated evidence.

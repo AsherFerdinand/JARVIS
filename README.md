@@ -1,4 +1,4 @@
-# JARVIS 0.3.0
+# JARVIS 0.4.0
 
 A lightweight Windows text assistant and future ORBIT automation engine. Mandatory runtime dependencies:
 Python standard library only; device audio is an optional extra. No local model, automatic microphone capture, or telemetry.
@@ -35,7 +35,7 @@ and bounded event count. `--log-file PATH` opts into rotating fixed-message logs
 pipeline without devices or paid calls. Cloud speech and live audio require explicit provider
 configuration and activation; see [VOICE.md](docs/VOICE.md). Conversation requests now return
 bounded text responses; known commands still bypass AI. No wake word or global keyboard hooks.
-Windows CI builds a self-contained v0.3 portable ZIP including optional PortAudio runtime;
+Windows CI builds a self-contained v0.4 portable ZIP including optional PortAudio runtime;
 its execution and hardware compatibility must be reported separately from cloud mocks.
 
 ## Reliability diagnostics
@@ -43,4 +43,12 @@ its execution and hardware compatibility must be reported separately from cloud 
 `uv run jarvis --health` reports sanitized configuration/resource status without keys or devices.
 Normal device/provider failures allow a fresh activation; requests have total deadlines and local
 worker cancellation. Cloud POSTs never retry automatically. See [recovery guarantees](docs/VOICE.md)
-and [validation evidence](docs/PROGRESS.md). No local Windows testing is requested for v0.3.
+and [validation evidence](docs/PROGRESS.md). No local Windows testing is requested for v0.4.
+
+## Compatibility checks
+
+`uv run jarvis --provider-preflight` validates configuration offline; `--audio-preflight` checks
+device formats without recording. [Provider contracts](docs/PROVIDERS.md) describe explicit
+profiles/overrides and the difference from live verification. Device selection and bounded PCM
+conversion are documented in [VOICE.md](docs/VOICE.md). Windows CI tests the extracted ZIP
+against real local mock HTTP providers; no paid credentials or laptop testing are needed.

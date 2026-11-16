@@ -110,8 +110,12 @@ def preflight(settings: Mapping[str, str] | None = None) -> PreflightReport:
             role == "STT"
             and settings.get("JARVIS_STT_PROFILE", "openai") == "openai"
             and (
-                values["MODEL"] in {"gpt-4o-transcribe", "gpt-4o-mini-transcribe"}
-                or values["MODEL"].startswith("gpt-4o-mini-transcribe-")
+                values["MODEL"]
+                in {
+                    "gpt-4o-transcribe",
+                    "gpt-4o-mini-transcribe",
+                    "gpt-4o-mini-transcribe-2025-12-15",
+                }
             )
             and settings.get("JARVIS_STT_RESPONSE_FORMAT", "json") != "json"
         ):
